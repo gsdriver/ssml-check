@@ -77,19 +77,20 @@ function checkForValidTags(element) {
     'sub', 'voice', 'w'];
   let invalidTag;
 
-  if (element.elements) {
-    element.elements.forEach((item) => {
-      let result = checkForValidTags(item);
-      if (!invalidTag) {
-        invalidTag = result;
-      }
-    });
-  } else if (element.name) {
+  if (element.name) {
     if (validTags.indexOf(element.name) === -1) {
       invalidTag = element.name + ' is an invalid tag';
     } else {
       // Let's check values based on the tag
       switch (element.name) {
+        case 'amazon:effect':
+          // Must be name attribute with whispered value
+          if (!element.attributes || Object.keys(element.attributes).length > 1) {
+            invalidTag = 'amazon:effect has invalid attributes';
+          } else if (element.attributes.name !== 'whispered') {
+            invalidTag = 'amazon:effect has invalid name value ' + element.attributes.name;
+          }
+          break;
         case 'break':
           // Attribute must be time or strength
           if (element.attributes) {
@@ -116,6 +117,15 @@ function checkForValidTags(element) {
           break;
       }
     }
+  }
+
+  if (!invalidTag && element.elements) {
+    element.elements.forEach((item) => {
+      let result = checkForValidTags(item);
+      if (!invalidTag) {
+        invalidTag = result;
+      }
+    });
   }
 
   return invalidTag;

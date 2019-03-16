@@ -38,4 +38,6 @@ The current version of SSML-Check will check for the following:
  * Valid XML format
  * No more than five `audio` tags in the response
  * All tags are valid Alexa tags
+ * amazon:effect is whispered
+ * break has valid strength or time under 10 seconds
  * Duration checks (if checkDuration is set to true)
