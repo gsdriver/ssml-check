@@ -4,6 +4,20 @@
 
 const convert = require('xml-js');
 
+function breakDuration(text) {
+  // It must be of the form #s or #ms
+  let time;
+  if (text.match('[0-9]+ms')) {
+    time = parseInt(text);
+  } else if (text.match('[0-9]+s')) {
+    time = 1000 * parseInt(text);
+  } else {
+    // No good
+    return undefined;
+  }
+  return (time <= 10000) ? time : undefined;
+}
+
 function estimateDuration(element) {
   let duration = 0;
 
@@ -15,12 +29,8 @@ function estimateDuration(element) {
     // Count as 100 ms
     duration = 100;
   } else if (element.name === 'break') {
-    // Assume in ms for now
     if (element.attributes && element.attributes.time) {
-      const time = parseInt(element.attributes.time.match(/\d/g).join(''));
-      if (!isNaN(time)) {
-        duration = time;
-      }
+      duration = breakDuration(element.attributes.time);
     }
   } else if ((element.type === 'text') && element.text) {
     duration = 60 * element.text.length;
@@ -74,9 +84,37 @@ function checkForValidTags(element) {
         invalidTag = result;
       }
     });
-  } else {
+  } else if (element.name) {
     if (validTags.indexOf(element.name) === -1) {
-      invalidTag = element.name;
+      invalidTag = element.name + ' is an invalid tag';
+    } else {
+      // Let's check values based on the tag
+      switch (element.name) {
+        case 'break':
+          // Attribute must be time or strength
+          if (element.attributes) {
+            Object.keys(element.attributes).forEach((attribute) => {
+              if (attribute === 'strength') {
+                if (['none', 'x-weak', 'weak', 'medium', 'strong', 'x-strong']
+                  .indexOf(element.attributes.strength) === -1) {
+                  invalidTag = 'break tag has invalid strength attribute value ' + element.attributes.strength;
+                }
+              } else if (attribute === 'time') {
+                // Must be valid duration
+                if (breakDuration(element.attributes.time) === undefined) {
+                  invalidTag = 'break tag has invalid time attribute value ' + element.attributes.time;
+                }
+              } else {
+                // Invalid attribute
+                invalidTag = 'break tag has invalid attribute ' + attribute;
+              }
+            });
+          }
+          break;
+
+        default:
+          break;
+      }
     }
   }
 
@@ -152,7 +190,7 @@ module.exports = {
       // Make sure only valid tags are present
       const invalidTag = checkForValidTags(speech);
       if (invalidTag) {
-        return 'Invalid tag ' + invalidTag;
+        return invalidTag;
       }
 
       // Count the audio files - is it more than 5?
@@ -169,7 +207,7 @@ module.exports = {
         }
       }
     } catch (err) {
-      return 'Can\'t parse SSML';
+      return 'Unknown error';
     }
 
     // OK, looks like it's OK!

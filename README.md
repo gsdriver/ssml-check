@@ -19,7 +19,7 @@ The options structure is composed of the following fields with the following def
 
 ```
 {
-  platofrm:alexa,       // The voice platform to evaluate this SSML against.
+  platform:alexa,       // The voice platform to evaluate this SSML against.
                         // Currently only "alexa" is supported.
   checkDuration:false,  // Whether to check the length of the SSML to see
                         // if it is either too long or contains run-on text.
