@@ -1,0 +1,14 @@
+{
+  "name": "ssml-check",
+  "version": "1.0.0",
+  "description": "Check for valid SSML",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "dependencies": {
+    "xml-js": "^1.6.11"
+  },
+  "author": "Garrett Vargas",
+  "license": "ISC"
+}
