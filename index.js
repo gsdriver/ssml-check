@@ -82,37 +82,138 @@ function checkForValidTags(element) {
       invalidTag = element.name + ' is an invalid tag';
     } else {
       // Let's check values based on the tag
+      const attributes = Object.keys(element.attributes || {});
+
       switch (element.name) {
         case 'amazon:effect':
           // Must be name attribute with whispered value
-          if (!element.attributes || Object.keys(element.attributes).length > 1) {
+          if (attributes.length !== 1) {
             invalidTag = 'amazon:effect has invalid attributes';
           } else if (element.attributes.name !== 'whispered') {
             invalidTag = 'amazon:effect has invalid name value ' + element.attributes.name;
           }
           break;
-        case 'break':
-          // Attribute must be time or strength
-          if (element.attributes) {
-            Object.keys(element.attributes).forEach((attribute) => {
-              if (attribute === 'strength') {
-                if (['none', 'x-weak', 'weak', 'medium', 'strong', 'x-strong']
-                  .indexOf(element.attributes.strength) === -1) {
-                  invalidTag = 'break tag has invalid strength attribute value ' + element.attributes.strength;
-                }
-              } else if (attribute === 'time') {
-                // Must be valid duration
-                if (breakDuration(element.attributes.time) === undefined) {
-                  invalidTag = 'break tag has invalid time attribute value ' + element.attributes.time;
-                }
-              } else {
-                // Invalid attribute
-                invalidTag = 'break tag has invalid attribute ' + attribute;
-              }
-            });
+        case 'audio':
+          // src is required
+          if (attributes.length !== 1) {
+            invalidTag = 'audio has invalid attributes';
+          } else if (attributes[0] !== 'src') {
+            invalidTag = 'audio has invalid attribute ' + attributes[0];
           }
           break;
-
+        case 'break':
+          // Attribute must be time or strength
+          attributes.forEach((attribute) => {
+            if (attribute === 'strength') {
+              if (['none', 'x-weak', 'weak', 'medium', 'strong', 'x-strong']
+                .indexOf(element.attributes.strength) === -1) {
+                invalidTag = 'break tag has invalid strength value ' + element.attributes.strength;
+              }
+            } else if (attribute === 'time') {
+              // Must be valid duration
+              if (breakDuration(element.attributes.time) === undefined) {
+                invalidTag = 'break tag has invalid time value ' + element.attributes.time;
+              }
+            } else {
+              // Invalid attribute
+              invalidTag = 'break tag has invalid attribute ' + attribute;
+            }
+          });
+          break;
+        case 'emphasis':
+          // Must be level attribute
+          if (attributes.length !== 1) {
+            invalidTag = 'amazon:effect has invalid attributes';
+          } else if (attributes[0] !== 'level') {
+            invalidTag = 'emphasis has invalid attribute ' + attributes[0];
+          } else {
+            if (['strong', 'moderate', 'reduced']
+              .indexOf(element.attributes.level) === -1) {
+              invalidTag = 'emphasis tag has invalid level value ' + element.attributes.level;
+            }
+          }
+          break;
+        case 'lang':
+          // Must be xml:lang attribute
+          if (attributes.length !== 1) {
+            invalidTag = 'lang has invalid attributes';
+          } else if (attributes[0] !== 'xml:lang') {
+            invalidTag = 'lang has invalid attribute ' + attributes[0];
+          } else {
+            if (['en-US', 'en-GB', 'en-IN', 'en-AU', 'en-CA', 'de-DE', 'es-ES', 'it-IT', 'ja-JP', 'fr-FR']
+              .indexOf(element.attributes['xml:lang']) === -1) {
+              invalidTag = 'lang tag has invalid xml:lang value ' + element.attributes['xml:lang'];
+            }
+          }
+          break;
+        case 'p':
+          if (attributes.length > 0) {
+            invalidTag = 'p tag should have no attributes';
+          }
+          break;
+        case 'phoneme':
+          // Attribute must be time or strength
+          attributes.forEach((attribute) => {
+            if (attribute === 'alphabet') {
+              if (['ipa', 'x-sampa']
+                .indexOf(element.attributes.alphabet) === -1) {
+                invalidTag = 'phoneme tag has invalid alphabet value ' + element.attributes.alphabet;
+              }
+            } else if (attribute !== 'ph') {
+              // Invalid attribute
+              invalidTag = 'phoneme tag has invalid attribute ' + attribute;
+            }
+          });
+          break;
+        case 'prosody':
+          break;
+        case 's':
+          if (attributes.length > 0) {
+            invalidTag = 's tag should have no attributes';
+          }
+          break;
+        case 'say-as':
+          break;
+        case 'sub':
+          // alias is optional
+          attributes.forEach((attribute) => {
+            if (attribute !== 'alias') {
+              // Invalid attribute
+              invalidTag = 'sub tag has invalid attribute ' + attribute;
+            }
+          });
+          break;
+        case 'voice':
+          // Attribute must be name
+          attributes.forEach((attribute) => {
+            if (attribute === 'name') {
+              if (['Ivy', 'Joanna', 'Joey', 'Justin', 'Kendra', 'Kimberly', 'Matthew', 'Salli',
+                  'Nicole', 'Russell', 'Amy', 'Brian', 'Emma', 'Aditi', 'Raveena',
+                  'Hans', 'Marlene', 'Vicki', 'Conchita', 'Enrique',
+                  'Carla', 'Giorgio', 'Mizuki', 'Takumi', 'Celine', 'Lea', 'Mathieu']
+                .indexOf(element.attributes.name) === -1) {
+                invalidTag = 'voice tag has invalid name value ' + element.attributes.name;
+              }
+            } else {
+              // Invalid attribute
+              invalidTag = 'voice tag has invalid attribute ' + attribute;
+            }
+          });
+          break;
+        case 'w':
+          // Attribute must be role
+          attributes.forEach((attribute) => {
+            if (attribute === 'role') {
+              if (['amazon:VB', 'amazon:VBD', 'amazon:NN', 'amazon:SENSE_1']
+                .indexOf(element.attributes.role) === -1) {
+                invalidTag = 'w tag has invalid name value ' + element.attributes.role;
+              }
+            } else {
+              // Invalid attribute
+              invalidTag = 'w tag has invalid attribute ' + attribute;
+            }
+          });
+          break;
         default:
           break;
       }
@@ -172,6 +273,7 @@ module.exports = {
       let result;
       let text = ssml;
       const userOptions = options || {platform: 'alexa'};
+      userOptions.checkVUI = userOptions.checkVUI || {};
 
       // We only support (and default to) the Alexa platform
       if (userOptions.platform && (userOptions.platform !== 'alexa')) {
@@ -210,8 +312,8 @@ module.exports = {
       }
 
       // Check the duration if requested
-      if (userOptions.checkDuration) {
-        result = checkDuration(speech, userOptions);
+      if (userOptions.checkVUI.duration) {
+        result = checkDuration(speech, userOptions.checkVUI);
         if (result) {
           return result;
         }
