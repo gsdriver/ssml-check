@@ -35,18 +35,25 @@ function prosodyRate(text) {
   return (rate) ? (rate / 100.0) : undefined;
 }
 
-function breakDuration(text) {
+function readDuration(text, maximum) {
   // It must be of the form #s or #ms
   let time;
-  if (text.match('[0-9]+ms')) {
+  if (!maximum && (text === 'infinity')) {
+    time = Number.MAX_SAFE_INTEGER;
+  } else if (text.match('[0-9]+ms')) {
     time = parseInt(text);
-  } else if (text.match('[0-9]+s')) {
+  } else if (text.match(/^[0-9]+(\.[0-9]+)?s$/g)) {
     time = 1000 * parseInt(text);
   } else {
     // No good
     return undefined;
   }
-  return (time <= 10000) ? time : undefined;
+
+  if (maximum) {
+    time = (time <= maximum) ? time : undefined;
+  }
+
+  return time;
 }
 
 function countAudioFiles(element) {
@@ -63,13 +70,16 @@ function countAudioFiles(element) {
   return files;
 }
 
-function checkForValidTags(errors, element) {
-  const validTags = ['amazon:effect', 'audio', 'break', 'emphasis',
-    'lang', 'p', 'phoneme', 'prosody', 's', 'say-as', 'speak',
-    'sub', 'voice', 'w'];
+function checkForValidTags(errors, element, platform) {
+  const validTags = ['audio', 'break', 'emphasis', 'p', 'prosody', 's', 'say-as', 'speak', 'sub'];
+  const validAmazonTags = ['amazon:effect', 'lang', 'phoneme', 'voice', 'w'];
+  const validGoogleTags = ['par', 'seq', 'media'];
 
   if (element.name) {
-    if (validTags.indexOf(element.name) === -1) {
+    if ((validTags.indexOf(element.name) === -1) &&
+      !(((platform === 'amazon') && (validAmazonTags.indexOf(element.name) !== -1)) ||
+      ((platform === 'google') && (validGoogleTags.indexOf(element.name) !== -1)))) {
+      console.log('oops ' + platform + ' ' + element.name);
       errors.push({type: 'tag', tag: element.name});
     } else {
       // Let's check values based on the tag
@@ -97,7 +107,32 @@ function checkForValidTags(errors, element) {
         case 'audio':
           // Must be src attribute
           attributes.forEach((attribute) => {
-            if (attribute !== 'src') {
+            if ((platform === 'google') && (attribute === 'clipBegin')) {
+              if (readDuration(element.attributes.clipBegin) === undefined) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if ((platform === 'google') && (attribute === 'clipEnd')) {
+              if (readDuration(element.attributes.clipEnd) === undefined) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if ((platform === 'google') && (attribute === 'speed')) {
+              if (!element.attributes.speed.match(/^(\+)?[0-9]+(\.[0-9]+)?$/g)) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if ((platform === 'google') && (attribute === 'repeatCount')) {
+              if (!element.attributes.repeatCount.match(/^(\+)?[0-9]+(\.[0-9]+)?$/g)) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if ((platform === 'google') && (attribute === 'repeatDur')) {
+              if (readDuration(element.attributes.repeatDur) === undefined) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if ((platform === 'google') && (attribute === 'soundLevel')) {
+              // It's OK if it's of the form +xdB or - xdB; value doesn't matter
+              if (!element.attributes.soundLevel.match(/^[+-][0-9]+(\.[0-9]+)?dB$/g)) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if (attribute !== 'src') {
               // Invalid attribute
               errors.push(createTagError(element, attribute, true));
             }
@@ -118,7 +153,7 @@ function checkForValidTags(errors, element) {
               }
             } else if (attribute === 'time') {
               // Must be valid duration
-              if (breakDuration(element.attributes.time) === undefined) {
+              if (readDuration(element.attributes.time, 10000) === undefined) {
                 errors.push(createTagError(element, attribute));
               }
             } else {
@@ -133,7 +168,10 @@ function checkForValidTags(errors, element) {
             if (attribute === 'level') {
               if (['strong', 'moderate', 'reduced']
                 .indexOf(element.attributes.level) === -1) {
-                errors.push(createTagError(element, attribute));
+                // None is also allowed on Google
+                if ((platform !== 'google') || (element.attributes.level !== 'none')) {
+                  errors.push(createTagError(element, attribute));
+                }
               }
             } else {
               // Invalid attribute
@@ -165,11 +203,69 @@ function checkForValidTags(errors, element) {
             errors.push(createTagError(element, 'none'));
           }
           break;
+        case 'media':
+          attributes.forEach((attribute) => {
+            if (attribute === 'xml:id') {
+              if (!element.attributes['xml:id'].match(/^([-_#]|\p{L}|\p{D})+$/g)) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if (attribute === 'begin') {
+              if (!element.attributes.begin.match(/^[+-]?[0-9]+(\.[0-9]+)?(h|min|s|ms)$/g)
+                && !element.attributes.begin.match(/^.\.(begin|end)[+-][0-9]+(\.[0-9]+)?(h|min|s|ms)$/g)) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if (attribute === 'end') {
+              if (!element.attributes.end.match(/^[+-]?[0-9]+(\.[0-9]+)?(h|min|s|ms)$/g)
+                && !element.attributes.end.match(/^.\.(begin|end)[+-][0-9]+(\.[0-9]+)?(h|min|s|ms)$/g)) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if (attribute === 'repeatCount') {
+              if (!element.attributes.repeatCount.match(/^(\+)?[0-9]+(\.[0-9]+)?$/g)) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if (attribute === 'repeatDur') {
+              if (readDuration(element.attributes.repeatDur) === undefined) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if (attribute === 'soundLevel') {
+              // It's OK if it's of the form +xdB or - xdB; value doesn't matter
+              if (!element.attributes.soundLevel.match(/^[+-][0-9]+(\.[0-9]+)?dB$/g)) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if (attribute === 'fadeInDur') {
+              if (readDuration(element.attributes.fadeInDur) === undefined) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if (attribute === 'fadeOutDur') {
+              if (readDuration(element.attributes.fadeOutDur) === undefined) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else {
+              // Invalid attribute
+              errors.push(createTagError(element, attribute, true));
+            }
+          });
+
+          break;
         case 'p':
           // No attributes allowed
           attributes.forEach((attribute) => {
             errors.push(createTagError(element, attribute, true));
           });
+          break;
+        case 'par':
+        case 'seq':
+          // These elements house other par, seq, or media elements
+          if (element.elements) {
+            element.elements.forEach((item) => {
+              if (['par', 'seq', 'media'].indexOf(item.name) === -1) {
+                const error = createTagError(element, attribute);
+                error.value = item.name;
+                errors.push(error);
+              }
+            });
+          }
+
           break;
         case 'phoneme':
           // Attribute must be time or strength
@@ -232,14 +328,31 @@ function checkForValidTags(errors, element) {
           // Attribute must be interpret-as or format
           attributes.forEach((attribute) => {
             if (attribute === 'interpret-as') {
-              if (['characters', 'spell-out', 'cardinal', 'number', 'ordinal',
-                  'digits', 'fraction', 'unit', 'date', 'time', 'telephone',
-                  'address', 'interjection', 'expletive'].indexOf(element.attributes['interpret-as']) === -1) {
-                errors.push(createTagError(element, attribute));
+              if (['characters', 'spell-out', 'cardinal', 'ordinal',
+                  'fraction', 'unit', 'date', 'time', 'telephone', 'expletive']
+                  .indexOf(element.attributes['interpret-as']) === -1) {
+                // Some attributes are platform specific
+                let supported = false;
+                if ((platform === 'amazon') &&
+                  ['number', 'digits', 'address', 'interjection']
+                  .indexOf(element.attributes['interpret-as'] !== -1)) {
+                  supported = true;
+                } else if ((platform === 'google') &&
+                  ['bleep', 'verbatim'].indexOf(element.attributes['interpret-as'] !== -1)) {
+                  supported = true;
+                }
+
+                if (!supported) {
+                  errors.push(createTagError(element, attribute));
+                }
               }
             } else if (attribute === 'format') {
               if (['mdy', 'dmy', 'ymd', 'md', 'dm', 'ym',
                   'my', 'd', 'm', 'y'].indexOf(element.attributes.format) === -1) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if ((platform === 'google') && (attribute === 'detail')) {
+              if (['1', '2'].indexOf(element.attributes.detail) === -1) {
                 errors.push(createTagError(element, attribute));
               }
             } else {
@@ -296,7 +409,7 @@ function checkForValidTags(errors, element) {
 
   if (element.elements) {
     element.elements.forEach((item) => {
-      checkForValidTags(errors, item);
+      checkForValidTags(errors, item, platform);
     });
   }
 }
@@ -338,7 +451,7 @@ module.exports = {
       }
 
       // Make sure only valid tags are present
-      checkForValidTags(errors, speech);
+      checkForValidTags(errors, speech, userOptions.platform);
 
       // Count the audio files - is it more than 5?
       const audio = countAudioFiles(speech);

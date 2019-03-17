@@ -29,9 +29,9 @@ The return value is an array of errors that were encountered in processing the S
 ```
 {
   type,       // The type of error encountered
-  tag,        // The tag that had an error (set if type has the value tag)
-  attribute,  // The attribute that had an error (set if type has value tag)
-  value,      // The attribute value that was in error (set if type has value tag)
+  tag,        // The tag that had an error (set if type is "tag")
+  attribute,  // The attribute that had an error (set if type is "tag")
+  value,      // The attribute value that was in error (set if type is "tag")
 }
 ```
 The current version of SSML-Check will check for the following:
