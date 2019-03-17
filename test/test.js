@@ -5,7 +5,26 @@ let succeeded = 0;
 let failed = 0;
 
 function runTest(testName, ssml, options, expectedResult) {
-  const result = lib.check(ssml, options);
+  const retVal = lib.check(ssml, options);
+  let result;
+
+  if (retVal) {
+    result = '';
+    retVal.forEach((value) => {
+      if (value.tag) {
+        result += value.tag + ' tag has invalid ';
+        if (value.value) {
+          result += value.attribute + ' value ' + value.value;
+        } else if (value.attribute) {
+          result += 'attribute ' + value.attribute;
+        }
+      } else {
+        result = value.type;
+      }
+    });
+  } else {
+    result = 'valid';
+  }
 
   if (result == expectedResult) {
     succeeded++;
@@ -19,11 +38,11 @@ runTest('Simple SSML', '<speak>Simple test</speak>', null, 'valid');
 
 // Whisper tests
 runTest('Whisper effect', '<speak><amazon:effect name="whispered">Simple test <break strength="medium"/> code</amazon:effect></speak>', null, 'valid');
-runTest('Whisper effect', '<speak><amazon:effect name="whispering">Simple test <break strength="medium"/> code</amazon:effect></speak>', null, 'amazon:effect has invalid name value whispering');
+runTest('Whisper effect', '<speak><amazon:effect name="whispering">Simple test <break strength="medium"/> code</amazon:effect></speak>', null, 'amazon:effect tag has invalid name value whispering');
 
 // Break tests
 runTest('With break', '<speak>You lost <break time="200ms"/> Getting used to losing?  Take a break and come back tomorrow</speak>', null, 'valid');
-runTest('Break with bad attirbute', '<speak>You lost <break tim="200ms"/> Getting used to losing?  Take a break and come back tomorrow</speak>', null, 'break tag has invalid attribute tim');
+runTest('Break with bad attribute', '<speak>You lost <break tim="200ms"/> Getting used to losing?  Take a break and come back tomorrow</speak>', null, 'break tag has invalid attribute tim');
 runTest('Break with long attribute', '<speak>You lost <break time="200s"/> Getting used to losing?  Take a break and come back tomorrow</speak>', null, 'break tag has invalid time value 200s');
 
 // Emphasis tests
@@ -36,7 +55,7 @@ runTest('Invalid lang', '<speak><lang xml:lang="pt-BR">Blame it on Rior</lang></
 
 // p tests
 runTest('Valid p', '<speak><p>This is the first paragraph. There should be a pause after this text is spoken.</p><p>This is the second paragraph.</p></speak>', null, 'valid');
-runTest('Invalid p', '<speak><p dog="cute">This is the first paragraph. There should be a pause after this text is spoken.</p><p>This is the second paragraph.</p></speak>', null, 'p tag should have no attributes');
+runTest('Invalid p', '<speak><p dog="cute">This is the first paragraph. There should be a pause after this text is spoken.</p><p>This is the second paragraph.</p></speak>', null, 'p tag has invalid attribute dog');
 
 // phoneme tests
 runTest('Valid phoneme', '<speak>You say, <phoneme alphabet="ipa" ph="pɪˈkɑːn">pecan</phoneme>. I say, <phoneme alphabet="ipa" ph="ˈpi.kæn">pecan</phoneme>.</speak>', null, 'valid');
@@ -59,9 +78,18 @@ runTest('Invalid volume', '<speak><prosody volume="xx-large">Hello world</prosod
 runTest('Valid volume dB', '<speak><prosody volume="+4.5dB">Hello world</prosody></speak>', null, 'valid');
 runTest('Invalid volume dB', '<speak><prosody volume="-5.5.5dB">Hello world</prosody></speak>', null, 'prosody tag has invalid volume value -5.5.5dB');
 
+// say-as tests
+runTest('Valid say-as', '<speak><say-as interpret-as="interjection">Wow</say-as></speak>', null, 'valid');
+runTest('Valid say-as date', '<speak><say-as interpret-as="date" format="mdy">September 22</say-as></speak>', null, 'valid');
+runTest('Invalid say-as', '<speak><say-as interpret-as="interjections">Wow</say-as></speak>', null, 'say-as tag has invalid interpret-as value interjections');
+runTest('Invalid say-as date', '<speak><say-as interpret-as="date" format="mddy">September 22</say-as></speak>', null, 'say-as tag has invalid format value mddy');
+
 // voice tests
 runTest('Valid voice', '<speak>I want to tell you a secret. <voice name="Kendra">I am not a real human.</voice>. Can you believe it?</speak>', null, 'valid');
 runTest('Valid voice', '<speak>I want to tell you a secret. <voice name="Samantha">I am not a real human.</voice>. Can you believe it?</speak>', null, 'voice tag has invalid name value Samantha');
+
+// Multiple errors
+runTest('Bad break and invalid prosody rate', '<speak>You lost <break tim="200ms"/> Getting used to losing?  <prosody rate="xx-large">Take a break and come back tomorrow</prosody></speak>', null, 'break tag has invalid attribute timprosody tag has invalid rate value xx-large');
 
 // Invalid formats
 runTest('Invalid XML', '<tag>What is this?', null, 'Can\'t parse SSML');

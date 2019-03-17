@@ -4,6 +4,16 @@
 
 const convert = require('xml-js');
 
+function createTagError(element, attribute, undefinedValue) {
+  const error = {type: 'tag', tag: element.name};
+
+  error.type = 'tag';
+  error.tag = element.name;
+  error.attribute = attribute;
+  error.value = (undefinedValue) ? undefined : element.attributes[attribute];
+  return error;
+}
+
 function prosodyRate(text) {
   const rates = ['x-slow', 'slow', 'medium', 'fast', 'x-fast'];
   const values = [0.3, 0.6, 1, 1.5, 2];
@@ -92,15 +102,14 @@ function countAudioFiles(element) {
   return files;
 }
 
-function checkForValidTags(element) {
+function checkForValidTags(errors, element) {
   const validTags = ['amazon:effect', 'audio', 'break', 'emphasis',
     'lang', 'p', 'phoneme', 'prosody', 's', 'say-as', 'speak',
     'sub', 'voice', 'w'];
-  let invalidTag;
 
   if (element.name) {
     if (validTags.indexOf(element.name) === -1) {
-      invalidTag = element.name + ' is an invalid tag';
+      errors.push({type: 'tag', tag: element.name});
     } else {
       // Let's check values based on the tag
       const attributes = Object.keys(element.attributes || {});
@@ -108,18 +117,34 @@ function checkForValidTags(element) {
       switch (element.name) {
         case 'amazon:effect':
           // Must be name attribute with whispered value
-          if (attributes.length !== 1) {
-            invalidTag = 'amazon:effect has invalid attributes';
-          } else if (element.attributes.name !== 'whispered') {
-            invalidTag = 'amazon:effect has invalid name value ' + element.attributes.name;
+          attributes.forEach((attribute) => {
+            if (attribute === 'name') {
+              if (['whispered'].indexOf(element.attributes.name) === -1) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else {
+              // Invalid attribute
+              errors.push(createTagError(element, attribute, true));
+            }
+          });
+
+          // Also, name is required
+          if (attributes.length === 0) {
+            errors.push(createTagError(element, 'none'));
           }
           break;
         case 'audio':
-          // src is required
-          if (attributes.length !== 1) {
-            invalidTag = 'audio has invalid attributes';
-          } else if (attributes[0] !== 'src') {
-            invalidTag = 'audio has invalid attribute ' + attributes[0];
+          // Must be src attribute
+          attributes.forEach((attribute) => {
+            if (attribute !== 'src') {
+              // Invalid attribute
+              errors.push(createTagError(element, attribute, true));
+            }
+          });
+
+          // Also, src is required
+          if (attributes.length === 0) {
+            errors.push(createTagError(element, 'none'));
           }
           break;
         case 'break':
@@ -128,49 +153,62 @@ function checkForValidTags(element) {
             if (attribute === 'strength') {
               if (['none', 'x-weak', 'weak', 'medium', 'strong', 'x-strong']
                 .indexOf(element.attributes.strength) === -1) {
-                invalidTag = 'break tag has invalid strength value ' + element.attributes.strength;
+                errors.push(createTagError(element, attribute));
               }
             } else if (attribute === 'time') {
               // Must be valid duration
               if (breakDuration(element.attributes.time) === undefined) {
-                invalidTag = 'break tag has invalid time value ' + element.attributes.time;
+                errors.push(createTagError(element, attribute));
               }
             } else {
               // Invalid attribute
-              invalidTag = 'break tag has invalid attribute ' + attribute;
+              errors.push(createTagError(element, attribute, true));
             }
           });
           break;
         case 'emphasis':
           // Must be level attribute
-          if (attributes.length !== 1) {
-            invalidTag = 'amazon:effect has invalid attributes';
-          } else if (attributes[0] !== 'level') {
-            invalidTag = 'emphasis has invalid attribute ' + attributes[0];
-          } else {
-            if (['strong', 'moderate', 'reduced']
-              .indexOf(element.attributes.level) === -1) {
-              invalidTag = 'emphasis tag has invalid level value ' + element.attributes.level;
+          attributes.forEach((attribute) => {
+            if (attribute === 'level') {
+              if (['strong', 'moderate', 'reduced']
+                .indexOf(element.attributes.level) === -1) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else {
+              // Invalid attribute
+              errors.push(createTagError(element, attribute, true));
             }
+          });
+
+          // Also, level is required
+          if (attributes.length === 0) {
+            errors.push(createTagError(element, 'none'));
           }
           break;
         case 'lang':
           // Must be xml:lang attribute
-          if (attributes.length !== 1) {
-            invalidTag = 'lang has invalid attributes';
-          } else if (attributes[0] !== 'xml:lang') {
-            invalidTag = 'lang has invalid attribute ' + attributes[0];
-          } else {
-            if (['en-US', 'en-GB', 'en-IN', 'en-AU', 'en-CA', 'de-DE', 'es-ES', 'it-IT', 'ja-JP', 'fr-FR']
-              .indexOf(element.attributes['xml:lang']) === -1) {
-              invalidTag = 'lang tag has invalid xml:lang value ' + element.attributes['xml:lang'];
+          attributes.forEach((attribute) => {
+            if (attribute === 'xml:lang') {
+              if (['en-US', 'en-GB', 'en-IN', 'en-AU', 'en-CA', 'de-DE', 'es-ES', 'it-IT', 'ja-JP', 'fr-FR']
+                .indexOf(element.attributes['xml:lang']) === -1) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else {
+              // Invalid attribute
+              errors.push(createTagError(element, attribute, true));
             }
+          });
+
+          // Also, xml:lang is required
+          if (attributes.length === 0) {
+            errors.push(createTagError(element, 'none'));
           }
           break;
         case 'p':
-          if (attributes.length > 0) {
-            invalidTag = 'p tag should have no attributes';
-          }
+          // No attributes allowed
+          attributes.forEach((attribute) => {
+            errors.push(createTagError(element, attribute, true));
+          });
           break;
         case 'phoneme':
           // Attribute must be time or strength
@@ -178,11 +216,11 @@ function checkForValidTags(element) {
             if (attribute === 'alphabet') {
               if (['ipa', 'x-sampa']
                 .indexOf(element.attributes.alphabet) === -1) {
-                invalidTag = 'phoneme tag has invalid alphabet value ' + element.attributes.alphabet;
+                errors.push(createTagError(element, attribute));
               }
             } else if (attribute !== 'ph') {
               // Invalid attribute
-              invalidTag = 'phoneme tag has invalid attribute ' + attribute;
+              errors.push(createTagError(element, attribute, true));
             }
           });
           break;
@@ -191,7 +229,7 @@ function checkForValidTags(element) {
           attributes.forEach((attribute) => {
             if (attribute === 'rate') {
               if (!prosodyRate(element.attributes.rate)) {
-                invalidTag = 'prosody tag has invalid rate value ' + element.attributes.rate;
+                errors.push(createTagError(element, attribute));
               }
             } else if (attribute === 'pitch') {
               if (['x-low', 'low', 'medium', 'high', 'x-high'].indexOf(element.attributes.pitch) === -1) {
@@ -199,43 +237,62 @@ function checkForValidTags(element) {
                 if (element.attributes.pitch.match(/^\+[0-9]+(\.[0-9]+)?%$/g)) {
                   // Number must be less than 50
                   if (parseFloat(element.attributes.pitch) > 50) {
-                    invalidTag = 'prosody tag has invalid pitch value ' + element.attributes.pitch;
+                    errors.push(createTagError(element, attribute));
                   }
                 } else if (element.attributes.pitch.match(/^\-[0-9]+(\.[0-9]+)?%$/g)) {
                   // Number must be less than 33.3
                   if (parseFloat(element.attributes.pitch) < -33.3) {
-                    invalidTag = 'prosody tag has invalid pitch value ' + element.attributes.pitch;
+                    errors.push(createTagError(element, attribute));
                   }
                 } else {
-                  invalidTag = 'prosody tag has invalid pitch value ' + element.attributes.pitch;
+                  errors.push(createTagError(element, attribute));
                 }
               }
             } else if (attribute === 'volume') {
               if (['silent', 'x-soft', 'soft', 'medium', 'loud', 'x-loud'].indexOf(element.attributes.volume) === -1) {
                 // It's OK if it's of the form +xdB or - xdB; value doesn't matter
                 if (!element.attributes.volume.match(/^[+-][0-9]+(\.[0-9]+)?dB$/g)) {
-                  invalidTag = 'prosody tag has invalid volume value ' + element.attributes.volume;
+                  errors.push(createTagError(element, attribute));
                 }
               }
             } else {
               // Invalid attribute
-              invalidTag = 'prosody tag has invalid attribute ' + attribute;
+              errors.push(createTagError(element, attribute, true));
             }
           });
           break;
         case 's':
-          if (attributes.length > 0) {
-            invalidTag = 's tag should have no attributes';
-          }
+          // No attributes allowed
+          attributes.forEach((attribute) => {
+            errors.push(createTagError(element, attribute, true));
+          });
           break;
         case 'say-as':
+          // Attribute must be interpret-as or format
+          attributes.forEach((attribute) => {
+            if (attribute === 'interpret-as') {
+              if (['characters', 'spell-out', 'cardinal', 'number', 'ordinal',
+                  'digits', 'fraction', 'unit', 'date', 'time', 'telephone',
+                  'address', 'interjection', 'expletive'].indexOf(element.attributes['interpret-as']) === -1) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else if (attribute === 'format') {
+              if (['mdy', 'dmy', 'ymd', 'md', 'dm', 'ym',
+                  'my', 'd', 'm', 'y'].indexOf(element.attributes.format) === -1) {
+                errors.push(createTagError(element, attribute));
+              }
+            } else {
+              // Invalid attribute
+              errors.push(createTagError(element, attribute, true));
+            }
+          });
           break;
         case 'sub':
           // alias is optional
           attributes.forEach((attribute) => {
             if (attribute !== 'alias') {
               // Invalid attribute
-              invalidTag = 'sub tag has invalid attribute ' + attribute;
+              errors.push(createTagError(element, attribute, true));
             }
           });
           break;
@@ -248,11 +305,11 @@ function checkForValidTags(element) {
                   'Hans', 'Marlene', 'Vicki', 'Conchita', 'Enrique',
                   'Carla', 'Giorgio', 'Mizuki', 'Takumi', 'Celine', 'Lea', 'Mathieu']
                 .indexOf(element.attributes.name) === -1) {
-                invalidTag = 'voice tag has invalid name value ' + element.attributes.name;
+                errors.push(createTagError(element, attribute));
               }
             } else {
               // Invalid attribute
-              invalidTag = 'voice tag has invalid attribute ' + attribute;
+              errors.push(createTagError(element, attribute, true));
             }
           });
           break;
@@ -262,11 +319,11 @@ function checkForValidTags(element) {
             if (attribute === 'role') {
               if (['amazon:VB', 'amazon:VBD', 'amazon:NN', 'amazon:SENSE_1']
                 .indexOf(element.attributes.role) === -1) {
-                invalidTag = 'w tag has invalid name value ' + element.attributes.role;
+                errors.push(createTagError(element, attribute));
               }
             } else {
               // Invalid attribute
-              invalidTag = 'w tag has invalid attribute ' + attribute;
+              errors.push(createTagError(element, attribute, true));
             }
           });
           break;
@@ -276,16 +333,11 @@ function checkForValidTags(element) {
     }
   }
 
-  if (!invalidTag && element.elements) {
+  if (element.elements) {
     element.elements.forEach((item) => {
-      let result = checkForValidTags(item);
-      if (!invalidTag) {
-        invalidTag = result;
-      }
+      checkForValidTags(errors, item);
     });
   }
-
-  return invalidTag;
 }
 
 function checkDuration(speech, options) {
@@ -325,6 +377,8 @@ function checkDuration(speech, options) {
 
 module.exports = {
   check: function(ssml, options) {
+    const errors = [];
+
     try {
       let result;
       let text = ssml;
@@ -333,7 +387,8 @@ module.exports = {
 
       // We only support (and default to) the Alexa platform
       if (userOptions.platform && (userOptions.platform !== 'alexa')) {
-        return 'Invalid platform';
+        errors.push({type: 'invalid platform'});
+        return errors;
       }
 
       // Look for and turn periods into 100 ms pauses
@@ -349,37 +404,36 @@ module.exports = {
           (result.elements[0].name === 'speak')) {
           speech = result.elements[0];
         } else {
-          return 'Not wrapped in speak';
+          errors.push({type: 'tag', tag: 'speak'});
+          return errors;
         }
       } catch (err) {
-        return 'Can\'t parse SSML';
+        errors.push({type: 'Can\'t parse SSML'});
+        return errors;
       }
 
       // Make sure only valid tags are present
-      const invalidTag = checkForValidTags(speech);
-      if (invalidTag) {
-        return invalidTag;
-      }
+      checkForValidTags(errors, speech);
 
       // Count the audio files - is it more than 5?
       const audio = countAudioFiles(speech);
       if (audio > 5) {
-        return 'Too many audio files';
+        errors.push({type: 'Too many audio files'});
       }
 
       // Check the duration if requested
       if (userOptions.checkVUI.duration) {
         result = checkDuration(speech, userOptions.checkVUI);
         if (result) {
-          return result;
+          errors.push({type: 'VUI', reason: result});
         }
       }
     } catch (err) {
       console.log(err);
-      return 'Unknown error';
+      errors.push({type: 'unknown error'});
     }
 
     // OK, looks like it's OK!
-    return 'valid';
+    return (errors.length ? errors : undefined);
   }
 };

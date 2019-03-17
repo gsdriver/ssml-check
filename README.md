@@ -33,11 +33,20 @@ The options structure is composed of the following fields with the following def
 }
 ```
 
-If the SSML passes all checks in this library, then the return value is `valid`. Otherwise, the return value is a string indicating how the SSML fails validation.
+The return value is an array of errors that were encountered in processing the SSML, or `undefined` if no errors were encountered.  The format of each error object is as follows:
 
+```
+{
+  type,       // The type of error encountered
+  tag,        // The tag that had an error (set if type has the value tag)
+  attribute,  // The attribute that had an error (set if type has value tag)
+  value,      // The attribute value that was in error (set if type has value tag)
+  reason,     // The reason for VUI validation failure (set if type has the value VUI)
+}
+```
 The current version of SSML-Check will check for the following:
 
  * Valid XML format
  * No more than five `audio` tags in the response
  * All tags are valid Alexa tags with valid attributes and values
- * Duration checks (if checkDuration is set to true)
+ * Duration checks (if checkVUI.duration is set to true)
