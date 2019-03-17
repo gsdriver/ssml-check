@@ -49,45 +49,6 @@ function breakDuration(text) {
   return (time <= 10000) ? time : undefined;
 }
 
-function estimateDuration(element) {
-  let duration = 0;
-
-  if (element.elements) {
-    element.elements.forEach((item) => {
-      duration += estimateDuration(item);
-    });
-  } else if (element.name === 'audio') {
-    // Count as 100 ms
-    duration = 100;
-  } else if (element.name === 'break') {
-    if (element.attributes && element.attributes.time) {
-      duration = breakDuration(element.attributes.time);
-    }
-  } else if ((element.type === 'text') && element.text) {
-    duration = 60 * element.text.length;
-  }
-
-  return duration;
-}
-
-function findLongestText(element) {
-  let longest = 0;
-
-  if (element.elements) {
-    let itemLen;
-    element.elements.forEach((item) => {
-      itemLen = findLongestText(item);
-      if (itemLen > longest) {
-        longest = itemLen;
-      }
-    });
-  } else if ((element.type === 'text') && element.text) {
-    longest = element.text.length;
-  }
-
-  return longest;
-}
-
 function countAudioFiles(element) {
   let files = 0;
 
@@ -340,41 +301,6 @@ function checkForValidTags(errors, element) {
   }
 }
 
-function checkDuration(speech, options) {
-  let maxDuration;
-  let maxTextRun;
-  let result;
-
-  if (options.maxDuration) {
-    maxDuration = parseInt(options.maxDuration);
-  }
-  if (!maxDuration || isNaN(maxDuration)) {
-    maxDuration = 10000;
-  }
-  if (options.maxTextRun) {
-    maxTextRun = parseInt(options.maxTextRun);
-  }
-  if (!maxTextRun || isNaN(maxTextRun)) {
-    maxTextRun = 5000;
-  }
-
-  // Is this more than 6 seconds?
-  const maxRun = findLongestText(speech);
-  if (maxRun * 60 > maxTextRun) {
-    result = 'Run-on text';
-  }
-
-  if (!result) {
-    // Now check if the total response is more than 10 seconds
-    const duration = estimateDuration(speech);
-    if (duration > maxDuration) {
-      result = 'Too long';
-    }
-  }
-
-  return result;
-}
-
 module.exports = {
   check: function(ssml, options) {
     const errors = [];
@@ -382,11 +308,10 @@ module.exports = {
     try {
       let result;
       let text = ssml;
-      const userOptions = options || {platform: 'alexa'};
+      const userOptions = options || {platform: 'all'};
       userOptions.checkVUI = userOptions.checkVUI || {};
 
-      // We only support (and default to) the Alexa platform
-      if (userOptions.platform && (userOptions.platform !== 'alexa')) {
+      if (['all', 'amazon', 'google'].indexOf(userOptions.platform) === -1) {
         errors.push({type: 'invalid platform'});
         return errors;
       }
@@ -419,14 +344,6 @@ module.exports = {
       const audio = countAudioFiles(speech);
       if (audio > 5) {
         errors.push({type: 'Too many audio files'});
-      }
-
-      // Check the duration if requested
-      if (userOptions.checkVUI.duration) {
-        result = checkDuration(speech, userOptions.checkVUI);
-        if (result) {
-          errors.push({type: 'VUI', reason: result});
-        }
       }
     } catch (err) {
       console.log(err);

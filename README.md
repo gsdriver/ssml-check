@@ -19,17 +19,8 @@ The options structure is composed of the following fields with the following def
 
 ```
 {
-  platform:alexa,       // The voice platform to evaluate this SSML against.
-                        // Currently only "alexa" is supported.
-  checkVUI,             // Beta: If present, this object provides details on 
-                        // validating the SSML against VUI best practices
-    duration:false,     // Whether to check the length of the SSML to see
-                        // if it is either too long or contains run-on text.
-    maxDuration:10000,  // Value, in ms, to check SSML length against.
-                        // This parameter is only considered when checkDuration is true           
-    maxTextRun:5000,    // Value, in ms, of the maximum amount of run-on text
-                        // (text without pauses). This value is only considered
-                        // when checkDuration is true.
+  platform:all,         // The voice platform to evaluate this SSML against.
+                        // Valid values are "all", "amazon", or "google".
 }
 ```
 
@@ -41,12 +32,10 @@ The return value is an array of errors that were encountered in processing the S
   tag,        // The tag that had an error (set if type has the value tag)
   attribute,  // The attribute that had an error (set if type has value tag)
   value,      // The attribute value that was in error (set if type has value tag)
-  reason,     // The reason for VUI validation failure (set if type has the value VUI)
 }
 ```
 The current version of SSML-Check will check for the following:
 
  * Valid XML format
  * No more than five `audio` tags in the response
- * All tags are valid Alexa tags with valid attributes and values
- * Duration checks (if checkVUI.duration is set to true)
+ * All tags are valid tags for their platform with valid attributes and values
