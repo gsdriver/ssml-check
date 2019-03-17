@@ -4,6 +4,27 @@
 
 const convert = require('xml-js');
 
+function prosodyRate(text) {
+  const rates = ['x-slow', 'slow', 'medium', 'fast', 'x-fast'];
+  const values = [0.3, 0.6, 1, 1.5, 2];
+
+  let i = rates.indexOf(text);
+  if (i > -1) {
+    return values[i];
+  }
+
+  // It must be of the form #%
+  let rate;
+  if (text.match('[0-9]+%')) {
+    rate = parseInt(text);
+    if (rate < 20) {
+      rate = undefined;
+    }
+  }
+
+  return (rate) ? (rate / 100.0) : undefined;
+}
+
 function breakDuration(text) {
   // It must be of the form #s or #ms
   let time;
@@ -166,6 +187,41 @@ function checkForValidTags(element) {
           });
           break;
         case 'prosody':
+          // Attribute must be time or strength
+          attributes.forEach((attribute) => {
+            if (attribute === 'rate') {
+              if (!prosodyRate(element.attributes.rate)) {
+                invalidTag = 'prosody tag has invalid rate value ' + element.attributes.rate;
+              }
+            } else if (attribute === 'pitch') {
+              if (['x-low', 'low', 'medium', 'high', 'x-high'].indexOf(element.attributes.pitch) === -1) {
+                // It's OK, it has to be of the form +x% or -x%
+                if (element.attributes.pitch.match(/^\+[0-9]+(\.[0-9]+)?%$/g)) {
+                  // Number must be less than 50
+                  if (parseFloat(element.attributes.pitch) > 50) {
+                    invalidTag = 'prosody tag has invalid pitch value ' + element.attributes.pitch;
+                  }
+                } else if (element.attributes.pitch.match(/^\-[0-9]+(\.[0-9]+)?%$/g)) {
+                  // Number must be less than 33.3
+                  if (parseFloat(element.attributes.pitch) < -33.3) {
+                    invalidTag = 'prosody tag has invalid pitch value ' + element.attributes.pitch;
+                  }
+                } else {
+                  invalidTag = 'prosody tag has invalid pitch value ' + element.attributes.pitch;
+                }
+              }
+            } else if (attribute === 'volume') {
+              if (['silent', 'x-soft', 'soft', 'medium', 'loud', 'x-loud'].indexOf(element.attributes.volume) === -1) {
+                // It's OK if it's of the form +xdB or - xdB; value doesn't matter
+                if (!element.attributes.volume.match(/^[+-][0-9]+(\.[0-9]+)?dB$/g)) {
+                  invalidTag = 'prosody tag has invalid volume value ' + element.attributes.volume;
+                }
+              }
+            } else {
+              // Invalid attribute
+              invalidTag = 'prosody tag has invalid attribute ' + attribute;
+            }
+          });
           break;
         case 's':
           if (attributes.length > 0) {
@@ -319,6 +375,7 @@ module.exports = {
         }
       }
     } catch (err) {
+      console.log(err);
       return 'Unknown error';
     }
 
