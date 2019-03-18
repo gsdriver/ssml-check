@@ -108,6 +108,7 @@ runTest('Bad break and invalid prosody rate', '<speak>You lost <break tim="200ms
 runTest('Invalid XML', '<tag>What is this?', null, 'Can\'t parse SSML');
 runTest('Too many audio files', '<speak><audio src=\"https://www.foo.com/foo.mp3\"/> one <audio src=\"https://www.foo.com/foo.mp3\"/> two <audio src=\"https://www.foo.com/foo.mp3\"/> three <audio src=\"https://www.foo.com/foo.mp3\"/> four <audio src=\"https://www.foo.com/foo.mp3\"/> five <audio src=\"https://www.foo.com/foo.mp3\"/> six </speak>', null, 'Too many audio files');
 runTest('Invalid platform', '<speak>Hello there</speak>', {platform: 'siri'}, 'invalid platform');
+runTest('Invalid ampersand', '<speak>This & that</speak>', null, 'Invalid & character');
 
 // Final summary
 console.log('\r\nRan ' + (succeeded + failed) + ' tests in ' + (Date.now() - start) + 'ms; ' + succeeded + ' passed and ' + failed + ' failed');

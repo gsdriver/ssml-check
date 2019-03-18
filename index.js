@@ -79,7 +79,6 @@ function checkForValidTags(errors, element, platform) {
     if ((validTags.indexOf(element.name) === -1) &&
       !(((platform === 'amazon') && (validAmazonTags.indexOf(element.name) !== -1)) ||
       ((platform === 'google') && (validGoogleTags.indexOf(element.name) !== -1)))) {
-      console.log('oops ' + platform + ' ' + element.name);
       errors.push({type: 'tag', tag: element.name});
     } else {
       // Let's check values based on the tag
@@ -429,11 +428,6 @@ module.exports = {
         return errors;
       }
 
-      // Look for and turn periods into 100 ms pauses
-      // and commas into 50 ms pauses
-      text = text.replace(/[.?!] /g, ' <break time="100ms"/> ');
-      text = text.replace(/, /g, ' <break time="50ms"/> ');
-
       // This needs to be a single item wrapped in a speak tag
       let speech;
       try {
@@ -446,7 +440,17 @@ module.exports = {
           return errors;
         }
       } catch (err) {
-        errors.push({type: 'Can\'t parse SSML'});
+        // Special case - if we replace & with &amp; does it fix it?
+        try {
+          text = text.replace('&', '&amp;');
+          const result = JSON.parse(convert.xml2json(text, {compact: false}));
+
+          // OK that worked, let them know it's an & problem
+          errors.push({type: 'Invalid & character'});
+        } catch(err) {
+          // Nope, it's some other error
+          errors.push({type: 'Can\'t parse SSML'});
+        }
         return errors;
       }
 

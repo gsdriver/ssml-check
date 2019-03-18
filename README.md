@@ -31,11 +31,12 @@ The return value is an array of errors that were encountered in processing the S
   type,       // The type of error encountered
   tag,        // The tag that had an error (set if type is "tag")
   attribute,  // The attribute that had an error (set if type is "tag")
-  value,      // The attribute value that was in error (set if type is "tag")
+  value,      // The attribute value that was in error
 }
 ```
 The current version of SSML-Check will check for the following:
 
  * Valid XML format
- * No more than five `audio` tags in the response
  * All tags are valid tags for their platform with valid attributes and values
+ * No more than five `audio` tags in the response
+ * Note invalid & character
