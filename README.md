@@ -1,10 +1,10 @@
 # SSML-Check
 
-SSML-Check will verify that you have valid SSML, with optional checks for run-on sentences that detract from the customer experience.
+SSML-Check will verify that a given input is valid SSML
 
 # Usage
 
-The exposed function from this library is `check` which returns a string inidicating whether the SSML string is valid or, if not, how it fails validation
+The exposed function from this library is `check` which verifies whether the given input is a valid SSML string on either the Amazon Alexa or Google Assistant platform (or both). If it isn't valid SSML, the function returns an array inidicating how the input fails validation
 
 ```
 check(ssml, options)
@@ -19,8 +19,8 @@ The options structure is composed of the following fields with the following def
 
 ```
 {
-  platform:all,         // The voice platform to evaluate this SSML against.
-                        // Valid values are "all", "amazon", or "google".
+  platform:all,    // The voice platform to evaluate this SSML against.
+                   // Valid values are "all", "amazon", or "google".
 }
 ```
 
@@ -40,3 +40,7 @@ The current version of SSML-Check will check for the following:
  * All tags are valid tags for their platform with valid attributes and values
  * No more than five `audio` tags in the response
  * Note invalid & character
+ 
+# Contributions
+
+Contributions are welcome! Please feel free to fork this code and submit pull requests, for bug fixes or feature enhancements.
