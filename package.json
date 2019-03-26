@@ -9,6 +9,10 @@
   "dependencies": {
     "xml-js": "^1.6.11"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gsdriver/ssml-check"
+  },
   "keywords": [
     "ssml",
     "alexa",
@@ -20,5 +24,8 @@
     "vui"
   ],
   "author": "Garrett Vargas",
-  "license": "ISC"
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gsdriver/ssml-check/issues"
+  }
 }
