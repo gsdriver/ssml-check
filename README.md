@@ -21,7 +21,7 @@ The options structure is composed of the following fields with the following def
 {
   platform:all,             // The voice platform to evaluate this SSML against.
                             // Valid values are "all", "amazon", or "google".
-  validateAudioFiles:false, // Whether to valid audio files against
+  validateAudioFiles:false, // Whether to validate audio files against
                             // acceptable formats (bit rate, sample rate, etc)
 }
 ```

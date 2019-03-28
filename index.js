@@ -72,31 +72,58 @@ function getAudioFiles(element) {
   return files;
 }
 
-function validateAudio(src) {
+function validateAudio(src, platform) {
   const errors = [];
 
   // It can be one of the built-in Amazon sounds (from the soundbank)
+  // We'll check if it has the appropriate structure
+  // soundbank://soundlibrary/category/sound
+  if (platform === 'amazon') {
+    const prefix = 'soundbank://soundlibrary/';
+    if (src.indexOf(prefix) === 0) {
+      // Parse out the category and sound
+      const path = src.slice(prefix.length - src.length).split('/');
 
-  // Must be MP3 at HTTPS endpoint
+      // Does it have a valid category?
+      if ((path.length === 2) && (['ambience', 'animals', 'battle',
+        'cartoon', 'foley', 'gameshow', 'home', 'human', 'impact',
+        'magic', 'musical', 'nature', 'office', 'scifi', 'transportation'].indexOf(path[0]) !== -1)) {
+        // We'll say this is good
+        return Promise.resolve(errors);
+      } else {
+        errors.push({type: 'audio', value: src, detail: `Invalid soundbank category ${path[0]}`});
+        return Promise.resolve(errors);
+      }
+    }
+  }
+
+  // Alexa - Must be MP3 at HTTPS endpoint
+  // Google - Must be MP3 or OGG at HTTPS endpoint
   if (!src.match(/^https(.)+\.mp3/gi)) {
-    errors.push({type: 'audio', value: src, detail: 'Not MP3 on HTTPS'});
-    return Promise.resolve(errors);
+    // It can be OGG if Google platform
+    if ((platform !== 'google') || !src.match(/^https(.)+\.ogg/gi)) {
+      errors.push({type: 'audio', value: src, detail: 'Not correct audio format on HTTPS'});
+      return Promise.resolve(errors);
+    }
   }
 
   // Make sure we can access the audio file
-  // The sample rate must be 22050Hz, 24000Hz, or 16000Hz
-  // and the bit rate must be 48kbps
-  // audio file length cannot be more than 240 seconds
+  // The sample rate must be 22050Hz, 24000Hz, or 16000Hz (24000Hz on google)
+  // and the bit rate must be 48kbps on amazon or 24-96kpbs on google
+  // audio file length cannot be more than 240 seconds (120 seconds on google)
   return ffprobe(src, {path: ffprobeStatic.path})
   .then((info) => {
     info.streams.forEach((stream) => {
-      if ([22050, 24000, 16000].indexOf(parseInt(stream.sample_rate)) === -1) {
-        errors.push({type: 'audio', value: src, detail: `Invalid bit rate ${stream.sample_rate} Hz`})
+      if (((platform !== 'amazon') || [22050, 24000, 16000].indexOf(parseInt(stream.sample_rate)) === -1)
+        && (parseInt(stream.sample_rate) !== 24000)) {
+        errors.push({type: 'audio', value: src, detail: `Invalid sample rate ${stream.sample_rate} Hz`})
       }
-      if (stream.bit_rate != 48000) {
+      if (((platform !== 'google') || (stream.bit_rate < 24000) || (stream.bit_rate > 96000))
+        && (stream.bit_rate != 48000)) {
         errors.push({type: 'audio', value: src, detail: `Invalid bit rate ${stream.bit_rate}`})
       }
-      if (stream.duration > 240) {
+      if (((platform !== 'amazon') || (stream.duration > 240))
+        && (stream.duration > 120)) {
         errors.push({type: 'audio', value: src, detail: `Invalid duration ${stream.duration} Hz`})
       }
     });
@@ -507,7 +534,7 @@ module.exports = {
         const promises = [];
 
         audio.forEach((file) => {
-          promises.push(validateAudio(file));
+          promises.push(validateAudio(file, userOptions.platform));
         });
 
         return Promise.all(promises).then((audioErrors) => {
