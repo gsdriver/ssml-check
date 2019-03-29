@@ -3,6 +3,8 @@
 //
 
 const convert = require('xml-js');
+const ffprobe = require('ffprobe');
+const ffprobeStatic = require('ffprobe-static');
 
 function createTagError(element, attribute, undefinedValue) {
   const error = {type: 'tag', tag: element.name};
@@ -56,18 +58,82 @@ function readDuration(text, maximum) {
   return time;
 }
 
-function countAudioFiles(element) {
-  let files = 0;
+function getAudioFiles(element) {
+  let files = [];
 
   if (element.elements) {
     element.elements.forEach((item) => {
-      files += countAudioFiles(item);
+      files = files.concat(getAudioFiles(item));
     });
-  } else if (element.name === 'audio') {
-    files = 1;
+  } else if ((element.name === 'audio') && (element.attributes.src)) {
+    files.push(element.attributes.src);
   }
 
   return files;
+}
+
+function validateAudio(src, platform) {
+  const errors = [];
+
+  // It can be one of the built-in Amazon sounds (from the soundbank)
+  // We'll check if it has the appropriate structure
+  // soundbank://soundlibrary/category/sound
+  if (platform === 'amazon') {
+    const prefix = 'soundbank://soundlibrary/';
+    if (src.indexOf(prefix) === 0) {
+      // Parse out the category and sound
+      const path = src.slice(prefix.length - src.length).split('/');
+
+      // Does it have a valid category?
+      if ((path.length === 2) && (['ambience', 'animals', 'battle',
+        'cartoon', 'foley', 'gameshow', 'home', 'human', 'impact',
+        'magic', 'musical', 'nature', 'office', 'scifi', 'transportation'].indexOf(path[0]) !== -1)) {
+        // We'll say this is good
+        return Promise.resolve(errors);
+      } else {
+        errors.push({type: 'audio', value: src, detail: `Invalid soundbank category ${path[0]}`});
+        return Promise.resolve(errors);
+      }
+    }
+  }
+
+  // Alexa - Must be MP3 at HTTPS endpoint
+  // Google - Must be MP3 or OGG at HTTPS endpoint
+  if (!src.match(/^https(.)+\.mp3/gi)) {
+    // It can be OGG if Google platform
+    if ((platform !== 'google') || !src.match(/^https(.)+\.ogg/gi)) {
+      errors.push({type: 'audio', value: src, detail: 'Not correct audio format on HTTPS'});
+      return Promise.resolve(errors);
+    }
+  }
+
+  // Make sure we can access the audio file
+  // The sample rate must be 22050Hz, 24000Hz, or 16000Hz (24000Hz on google)
+  // and the bit rate must be 48kbps on amazon or 24-96kpbs on google
+  // audio file length cannot be more than 240 seconds (120 seconds on google)
+  return ffprobe(src, {path: ffprobeStatic.path})
+  .then((info) => {
+    info.streams.forEach((stream) => {
+      if (((platform !== 'amazon') || [22050, 24000, 16000].indexOf(parseInt(stream.sample_rate)) === -1)
+        && (parseInt(stream.sample_rate) !== 24000)) {
+        errors.push({type: 'audio', value: src, detail: `Invalid sample rate ${stream.sample_rate} Hz`})
+      }
+      if (((platform !== 'google') || (stream.bit_rate < 24000) || (stream.bit_rate > 96000))
+        && (stream.bit_rate != 48000)) {
+        errors.push({type: 'audio', value: src, detail: `Invalid bit rate ${stream.bit_rate}`})
+      }
+      if (((platform !== 'amazon') || (stream.duration > 240))
+        && (stream.duration > 120)) {
+        errors.push({type: 'audio', value: src, detail: `Invalid duration ${stream.duration} Hz`})
+      }
+    });
+
+    return errors;
+  }).catch((err) => {
+    // We can't read this audio file
+    errors.push({type: 'audio', value: src, detail: 'Can\'t access file'});
+    return errors;
+  });
 }
 
 function checkForValidTags(errors, element, platform) {
@@ -415,17 +481,17 @@ function checkForValidTags(errors, element, platform) {
 
 module.exports = {
   check: function(ssml, options) {
-    const errors = [];
+    let errors = [];
 
     try {
       let result;
       let text = ssml;
-      const userOptions = options || {platform: 'all'};
-      userOptions.checkVUI = userOptions.checkVUI || {};
+      const userOptions = options || {};
+      userOptions.platform = userOptions.platform || 'all';
 
       if (['all', 'amazon', 'google'].indexOf(userOptions.platform) === -1) {
         errors.push({type: 'invalid platform'});
-        return errors;
+        return Promise.resolve(errors);
       }
 
       // This needs to be a single item wrapped in a speak tag
@@ -437,7 +503,7 @@ module.exports = {
           speech = result.elements[0];
         } else {
           errors.push({type: 'tag', tag: 'speak'});
-          return errors;
+          return Promise.resolve(errors);
         }
       } catch (err) {
         // Special case - if we replace & with &amp; does it fix it?
@@ -451,16 +517,32 @@ module.exports = {
           // Nope, it's some other error
           errors.push({type: 'Can\'t parse SSML'});
         }
-        return errors;
+        return Promise.resolve(errors);
       }
 
       // Make sure only valid tags are present
       checkForValidTags(errors, speech, userOptions.platform);
 
       // Count the audio files - is it more than 5?
-      const audio = countAudioFiles(speech);
-      if (audio > 5) {
+      const audio = getAudioFiles(speech);
+      if (audio.length > 5) {
         errors.push({type: 'Too many audio files'});
+      }
+
+      // If they asked to validate audio files, do that now
+      if (userOptions.validateAudioFiles) {
+        const promises = [];
+
+        audio.forEach((file) => {
+          promises.push(validateAudio(file, userOptions.platform));
+        });
+
+        return Promise.all(promises).then((audioErrors) => {
+          audioErrors.forEach((audioError) => {
+            errors = errors.concat(audioError);
+          });
+          return (errors.length ? errors : undefined);
+        });
       }
     } catch (err) {
       console.log(err);
@@ -468,6 +550,6 @@ module.exports = {
     }
 
     // OK, looks like it's OK!
-    return (errors.length ? errors : undefined);
-  }
+    return Promise.resolve(errors.length ? errors : undefined);
+  },
 };
