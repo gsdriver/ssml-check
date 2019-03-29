@@ -3,8 +3,9 @@
 //
 
 const convert = require('xml-js');
-const ffprobe = require('ffprobe');
-const ffprobeStatic = require('ffprobe-static');
+const Mp3Header = require('mp3-header').Mp3Header;
+const getMP3Duration = require('get-mp3-duration');
+const https = require('https');
 
 function createTagError(element, attribute, undefinedValue) {
   const error = {type: 'tag', tag: element.name};
@@ -72,6 +73,29 @@ function getAudioFiles(element) {
   return files;
 }
 
+function getMp3Metadata(buffer) {
+  let pos = buffer.indexOf(0xFF);
+  let bitrate;
+  let samplingRate;
+
+  while (pos >= 0) {
+    let header = new Mp3Header(buffer.slice(pos, pos + 4));
+    if (header.parsed && header.is_valid && header.mpeg_bitrate && header.mpeg_samplerate) {
+      bitrate = header.mpeg_bitrate;
+      samplingRate = header.mpeg_samplerate;
+      break;
+    }
+
+    pos = buffer.indexOf(0xFF, pos + 1);
+  }
+
+  return {
+    bit_rate: bitrate,
+    sample_rate: samplingRate,
+    duration: getMP3Duration(buffer),
+  };
+}
+
 function validateAudio(src, platform) {
   const errors = [];
 
@@ -111,28 +135,36 @@ function validateAudio(src, platform) {
   // The sample rate must be 22050Hz, 24000Hz, or 16000Hz (24000Hz on google)
   // and the bit rate must be 48kbps on amazon or 24-96kpbs on google
   // audio file length cannot be more than 240 seconds (120 seconds on google)
-  return ffprobe(src, {path: ffprobeStatic.path})
-  .then((info) => {
-    info.streams.forEach((stream) => {
-      if (((platform !== 'amazon') || [22050, 24000, 16000].indexOf(parseInt(stream.sample_rate)) === -1)
-        && (parseInt(stream.sample_rate) !== 24000)) {
-        errors.push({type: 'audio', value: src, detail: `Invalid sample rate ${stream.sample_rate} Hz`})
-      }
-      if (((platform !== 'google') || (stream.bit_rate < 24000) || (stream.bit_rate > 96000))
-        && (stream.bit_rate != 48000)) {
-        errors.push({type: 'audio', value: src, detail: `Invalid bit rate ${stream.bit_rate}`})
-      }
-      if (((platform !== 'amazon') || (stream.duration > 240))
-        && (stream.duration > 120)) {
-        errors.push({type: 'audio', value: src, detail: `Invalid duration ${stream.duration} Hz`})
-      }
+  return new Promise((resolve, reject) => {
+    const request = https.get(src, (resp) => {
+      const bufs = [];
+
+      resp.on('data', (d) => { bufs.push(d); });
+
+      resp.on('end', () => {
+        const buf = Buffer.concat(bufs);
+        const metadata = getMp3Metadata(buf);
+
+        if (((platform !== 'amazon') || [22050, 24000, 16000].indexOf(parseInt(metadata.sample_rate)) === -1)
+          && (parseInt(metadata.sample_rate) !== 24000)) {
+          errors.push({type: 'audio', value: src, detail: `Invalid sample rate ${metadata.sample_rate} Hz`})
+        }
+        if (((platform !== 'google') || (metadata.bit_rate < 24000) || (metadata.bit_rate > 96000))
+          && (metadata.bit_rate != 48000)) {
+          errors.push({type: 'audio', value: src, detail: `Invalid bit rate ${metadata.bit_rate}`})
+        }
+        if (((platform !== 'amazon') || (metadata.duration > 240000))
+          && (metadata.duration > 120000)) {
+          errors.push({type: 'audio', value: src, detail: `Invalid duration ${metadata.duration} ms`})
+        }
+        resolve(errors);
+      });
     });
 
-    return errors;
-  }).catch((err) => {
-    // We can't read this audio file
-    errors.push({type: 'audio', value: src, detail: 'Can\'t access file'});
-    return errors;
+    request.on('error', (err) => {
+      errors.push({type: 'audio', value: src, detail: 'Can\'t access file'});
+      resolve(errors);
+    });
   });
 }
 
