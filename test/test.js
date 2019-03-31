@@ -116,6 +116,10 @@ promises.push(runTest('Verify invalid file', '<speak><audio src="https://foo.wav
 promises.push(runTest('Verify soundbank file', '<speak><audio src="soundbank://soundlibrary/ambience/amzn_sfx_crowd_bar_01"/> You like that?</speak>', {platform: 'amazon', validateAudioFiles: true}, 'valid'));
 promises.push(runTest('Invalid soundbank file', '<speak><audio src="soundbank://soundlibrary/ambience/amzn_sfx_crowd_bar_01"/> You like that?</speak>', {validateAudioFiles: true}, 'audio file soundbank://soundlibrary/ambience/amzn_sfx_crowd_bar_01 Not correct audio format on HTTPS'));
 promises.push(runTest('Invalid soundbank category', '<speak><audio src="soundbank://soundlibrary/test/amzn_sfx_crowd_bar_01"/> You like that?</speak>', {platform: 'amazon', validateAudioFiles: true}, 'audio file soundbank://soundlibrary/test/amzn_sfx_crowd_bar_01 Invalid soundbank category test'));
+promises.push(runTest('Valid Google OOG', '<speak><audio speed="80%" soundLevel="-20.5dB" src="https://actions.google.com/sounds/v1/animals/cat_purr_close.ogg"><desc>a cat purring</desc>PURR (sound didn\'t load)</audio></speak>', {platform: 'google'}, 'valid'));
+promises.push(runTest('Invalid Google speed', '<speak><audio speed="40%" src="https://actions.google.com/sounds/v1/animals/cat_purr_close.ogg"><desc>a cat purring</desc>PURR (sound didn\'t load)</audio></speak>', {platform: 'google'}, 'audio tag has invalid speed value 40%'));
+promises.push(runTest('Invalid Google sound level', '<speak><audio soundLevel="+50dB" src="https://actions.google.com/sounds/v1/animals/cat_purr_close.ogg"><desc>a cat purring</desc>PURR (sound didn\'t load)</audio></speak>', {platform: 'google'}, 'audio tag has invalid soundLevel value +50dB'));
+promises.push(runTest('Stray desc', '<speak><desc>Some Text</desc></speak>', {platform: 'google'}, 'desc tag has invalid '));
 
 // Multiple errors
 promises.push(runTest('Bad break and invalid prosody rate', '<speak>You lost <break tim="200ms"/> Getting used to losing?  <prosody rate="xx-large">Take a break and come back tomorrow</prosody></speak>', null, 'break tag has invalid attribute timprosody tag has invalid rate value xx-large'));

@@ -62,12 +62,14 @@ function readDuration(text, maximum) {
 function getAudioFiles(element) {
   let files = [];
 
+  if ((element.name === 'audio') && (element.attributes.src)) {
+    files.push(element.attributes.src);
+  }
+
   if (element.elements) {
     element.elements.forEach((item) => {
       files = files.concat(getAudioFiles(item));
     });
-  } else if ((element.name === 'audio') && (element.attributes.src)) {
-    files.push(element.attributes.src);
   }
 
   return files;
@@ -168,10 +170,10 @@ function validateAudio(src, platform) {
   });
 }
 
-function checkForValidTags(errors, element, platform) {
+function checkForValidTags(errors, element, platform, parent) {
   const validTags = ['audio', 'break', 'emphasis', 'p', 'prosody', 's', 'say-as', 'speak', 'sub'];
   const validAmazonTags = ['amazon:effect', 'lang', 'phoneme', 'voice', 'w'];
-  const validGoogleTags = ['par', 'seq', 'media'];
+  const validGoogleTags = ['par', 'seq', 'media', 'desc'];
 
   if (element.name) {
     if ((validTags.indexOf(element.name) === -1) &&
@@ -213,7 +215,13 @@ function checkForValidTags(errors, element, platform) {
                 errors.push(createTagError(element, attribute));
               }
             } else if ((platform === 'google') && (attribute === 'speed')) {
-              if (!element.attributes.speed.match(/^(\+)?[0-9]+(\.[0-9]+)?$/g)) {
+              if (element.attributes.speed.match(/^(\+)?[0-9]+(\.[0-9]+)?%$/g)) {
+                // Number must be between 50 and 200
+                const speed = parseFloat(element.attributes.speed);
+                if ((speed < 50) || (speed > 200)) {
+                  errors.push(createTagError(element, attribute));
+                }
+              } else {
                 errors.push(createTagError(element, attribute));
               }
             } else if ((platform === 'google') && (attribute === 'repeatCount')) {
@@ -226,7 +234,12 @@ function checkForValidTags(errors, element, platform) {
               }
             } else if ((platform === 'google') && (attribute === 'soundLevel')) {
               // It's OK if it's of the form +xdB or - xdB; value doesn't matter
-              if (!element.attributes.soundLevel.match(/^[+-][0-9]+(\.[0-9]+)?dB$/g)) {
+              if (element.attributes.soundLevel.match(/^[+-][0-9]+(\.[0-9]+)?dB$/g)) {
+                const soundLevel = parseFloat(element.attributes.soundLevel);
+                if ((soundLevel < -40) || (soundLevel > 40)) {
+                  errors.push(createTagError(element, attribute));
+                }
+              } else {
                 errors.push(createTagError(element, attribute));
               }
             } else if (attribute !== 'src') {
@@ -258,6 +271,13 @@ function checkForValidTags(errors, element, platform) {
               errors.push(createTagError(element, attribute, true));
             }
           });
+          break;
+        case 'desc':
+          // Desc is valid as part of an audio tag on Google
+          if (!parent || (parent.name !== 'audio')) {
+            // Invalid in this context
+            errors.push({type: 'tag', tag: element.name});
+          }
           break;
         case 'emphasis':
           // Must be level attribute
@@ -506,7 +526,7 @@ function checkForValidTags(errors, element, platform) {
 
   if (element.elements) {
     element.elements.forEach((item) => {
-      checkForValidTags(errors, item, platform);
+      checkForValidTags(errors, item, platform, element);
     });
   }
 }
