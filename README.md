@@ -75,4 +75,11 @@ will output `[{"type":"audio","value":"https://foo.mp3","detail":"Can't access f
 
 # Contributions
 
-Contributions are welcome! Please feel free to fork this code and submit pull requests, for bug fixes or feature enhancements.
+We love your input! We want to make contributing to this project as easy and transparent as possible, whether it's:
+
+- Reporting a bug
+- Discussing the current state of the code
+- Submitting a fix
+- Proposing new features
+
+When contributing to this repository, please first discuss the change you wish to make by raising an issue or sending an e-mail with to the owners of this repository.
