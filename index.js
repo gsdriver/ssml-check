@@ -137,7 +137,7 @@ function validateAudio(src, platform) {
   // The sample rate must be 22050Hz, 24000Hz, or 16000Hz (24000Hz on google)
   // and the bit rate must be 48kbps on amazon or 24-96kpbs on google
   // audio file length cannot be more than 240 seconds (120 seconds on google)
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const request = https.get(src, (resp) => {
       const bufs = [];
 
@@ -163,7 +163,7 @@ function validateAudio(src, platform) {
       });
     });
 
-    request.on('error', (err) => {
+    request.on('error', () => {
       errors.push({type: 'audio', value: src, detail: 'Can\'t access file'});
       resolve(errors);
     });
@@ -376,7 +376,7 @@ function checkForValidTags(errors, element, platform, parent) {
           if (element.elements) {
             element.elements.forEach((item) => {
               if (['par', 'seq', 'media'].indexOf(item.name) === -1) {
-                const error = createTagError(element, attribute);
+                const error = {type: 'tag', tag: element.name};
                 error.value = item.name;
                 errors.push(error);
               }
@@ -413,7 +413,7 @@ function checkForValidTags(errors, element, platform, parent) {
                   if (parseFloat(element.attributes.pitch) > 50) {
                     errors.push(createTagError(element, attribute));
                   }
-                } else if (element.attributes.pitch.match(/^\-[0-9]+(\.[0-9]+)?%$/g)) {
+                } else if (element.attributes.pitch.match(/^-[0-9]+(\.[0-9]+)?%$/g)) {
                   // Number must be less than 33.3
                   if (parseFloat(element.attributes.pitch) < -33.3) {
                     errors.push(createTagError(element, attribute));
@@ -464,8 +464,20 @@ function checkForValidTags(errors, element, platform, parent) {
                 }
               }
             } else if (attribute === 'format') {
-              if (['mdy', 'dmy', 'ymd', 'md', 'dm', 'ym',
-                  'my', 'd', 'm', 'y'].indexOf(element.attributes.format) === -1) {
+              // Is this in support of a date or a time?
+              let isDate = (element.attributes['interpret-as'] === 'date');
+              if (isDate) {
+                if (['mdy', 'dmy', 'ymd', 'md', 'dm', 'ym',
+                    'my', 'd', 'm', 'y'].indexOf(element.attributes.format) === -1) {
+                  errors.push(createTagError(element, attribute));
+                }
+              } else if (platform === 'google') {
+                // We allow format for time variable
+                if (!element.attributes.format.match(/^[hmsZ^\s.!?:;(12|24)]*$/g)) {
+                  errors.push(createTagError(element, attribute));
+                }
+              } else {
+                // Format for Amazon is only supported on date
                 errors.push(createTagError(element, attribute));
               }
             } else if ((platform === 'google') && (attribute === 'detail')) {
@@ -536,7 +548,6 @@ module.exports = {
     let errors = [];
 
     try {
-      let result;
       let text = ssml;
       const userOptions = options || {};
       userOptions.platform = userOptions.platform || 'all';
@@ -561,7 +572,7 @@ module.exports = {
         // Special case - if we replace & with &amp; does it fix it?
         try {
           text = text.replace('&', '&amp;');
-          const result = JSON.parse(convert.xml2json(text, {compact: false}));
+          JSON.parse(convert.xml2json(text, {compact: false}));
 
           // OK that worked, let them know it's an & problem
           errors.push({type: 'Invalid & character'});
@@ -597,7 +608,6 @@ module.exports = {
         });
       }
     } catch (err) {
-      console.log(err);
       errors.push({type: 'unknown error'});
     }
 

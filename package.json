@@ -29,5 +29,8 @@
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/gsdriver/ssml-check/issues"
+  },
+  "devDependencies": {
+    "eslint": "^5.16.0"
   }
 }
