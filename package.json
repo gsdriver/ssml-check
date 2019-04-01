@@ -1,6 +1,6 @@
 {
   "name": "ssml-check",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Check for valid SSML",
   "main": "index.js",
   "scripts": {
