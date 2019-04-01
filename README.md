@@ -12,7 +12,7 @@ check(ssml, options)
 
 The arguments to these functions are:
 
- * ssml - The SSML to check
+ * ssml - The SSML to check. This can either be a string or a JSON object representing the parsed SSML (the common use case is to pass a string)
  * options - Options for evaluating the SSML as noted below
  
 The options structure is composed of the following fields with the following default values:
@@ -37,6 +37,7 @@ The return value is a Promise resolving to an array of errors that were encounte
   detail,     // Further details about the error (set if type is "audio")
 }
 ```
+ssml-check is built on top of [ssml-check-core](https://www.npmjs.com/package/ssml-check-core), which provides core syntax validation of SSML. This library extends this functionality by looking into files accessed by the input SSML such as audio files to make sure they conform with platform expectations.
 The current version of ssml-check will check for the following:
 
  * Valid XML format

@@ -7,8 +7,8 @@
     "test": "node test/test.js"
   },
   "dependencies": {
-    "get-mp3-duration": "^1.0.0",
-    "mp3-header": "^0.1.3",
+    "music-metadata": "^3.5.3",
+    "ssml-check-core": "^0.1.0",
     "xml-js": "^1.6.11"
   },
   "repository": {
@@ -26,11 +26,8 @@
     "vui"
   ],
   "author": "Garrett Vargas",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/gsdriver/ssml-check/issues"
-  },
-  "devDependencies": {
-    "eslint": "^5.16.0"
   }
 }
