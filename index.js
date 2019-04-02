@@ -98,55 +98,37 @@ function validateAudio(src, platform) {
 
 module.exports = {
   check: function(ssml, options) {
-    let errors = [];
-    let result;
     const userOptions = options || {};
     userOptions.platform = userOptions.platform || 'all';
 
-    // The input is either a string or a JSON object - convert it if
-    // it is a string into a JSON object
-    if (typeof ssml === 'object') {
-      // It's already an object
-      result = ssml;
-    } else {
-      try {
-        result = JSON.parse(convert.xml2json(ssml, {compact: false}));
-      } catch (err) {
-        // Special case - if we replace & with &amp; does it fix it?
-        try {
-          let text = ssml;
-          text = text.replace('&', '&amp;');
-          JSON.parse(convert.xml2json(text, {compact: false}));
-
-          // OK that worked, let them know it's an & problem
-          errors.push({type: 'Invalid & character'});
-        } catch(err) {
-          // Nope, it's some other error
-          errors.push({type: 'Can\'t parse SSML'});
-        }
-        return Promise.resolve(errors);
-      }
-    }
-
-    return ssmlCheckCore.check(result, options)
+    return ssmlCheckCore.check(ssml, options)
     .then((coreErrors) => {
-      errors = coreErrors || [];
+      let errors = coreErrors || [];
 
       // If they asked to validate audio files, do that now
       if (userOptions.validateAudioFiles) {
         const promises = [];
 
-        const audio = getAudioFiles(result.elements[0]);
-        audio.forEach((file) => {
-          promises.push(validateAudio(file, userOptions.platform));
-        });
+        // The input is either a string or a JSON object - convert it if
+        // it is a string into a JSON object
+        try {
+          const result = JSON.parse(convert.xml2json(ssml, {compact: false}));
+          const audio = getAudioFiles(result.elements[0]);
 
-        return Promise.all(promises).then((audioErrors) => {
-          audioErrors.forEach((audioError) => {
-            errors = errors.concat(audioError);
+          audio.forEach((file) => {
+            promises.push(validateAudio(file, userOptions.platform));
           });
+
+          return Promise.all(promises).then((audioErrors) => {
+            audioErrors.forEach((audioError) => {
+              errors = errors.concat(audioError);
+            });
+            return (errors.length ? errors : undefined);
+          });
+        } catch (err) {
+          // Just return the errors we already have
           return (errors.length ? errors : undefined);
-        });
+        }
       } else {
         return coreErrors;
       }

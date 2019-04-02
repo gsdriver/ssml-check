@@ -112,14 +112,12 @@ promises.push(runTest('Valid voice', '<speak>I want to tell you a secret. <voice
 promises.push(runTest('Valid media', '<speak><seq><media begin="0.5s"><speak>Who invented the Internet?</speak></media><media begin="2.0s"><speak>The Internet was invented by cats.</speak></media><media soundLevel="-6dB"><audio src="https://actions.google.com/.../cartoon_boing.ogg"/></media><media repeatCount="3" soundLevel="+2.28dB" fadeInDur="2s" fadeOutDur="0.2s"><audio src="https://actions.google.com/.../cat_purr_close.ogg"/></media></seq> </speak>', {platform: 'google'}, 'valid'));
 
 // Audio validation tests
-/*promises.push(runTest('Verify valid audio', '<speak><audio src="https://s3-us-west-2.amazonaws.com/alexasoundclips/casinowelcome.mp3"/> You like that?</speak>', {platform: 'amazon', validateAudioFiles: true}, 'valid'));
-promises.push(runTest('Verify invalid sample rate', '<speak><audio src="https://s3-us-west-2.amazonaws.com/alexasoundclips/casinowelcome.mp3"/> You like that?</speak>', {validateAudioFiles: true}, 'audio file https://s3-us-west-2.amazonaws.com/alexasoundclips/casinowelcome.mp3 Invalid sample rate 16000 Hz'));
+promises.push(runTest('Verify valid audio', '<speak><audio src="https://s3-us-west-2.amazonaws.com/alexasoundclips/casinowelcome.mp3"/> You like that?</speak>', {platform: 'amazon', validateAudioFiles: true}, 'valid'));
 promises.push(runTest('Verify invalid audio', '<speak><audio src="https://foo.ogg"/> You like that?</speak>', {platform: 'google', validateAudioFiles: true}, 'audio file https://foo.ogg Can\'t access file'));
 promises.push(runTest('Verify invalid file', '<speak><audio src="https://foo.wav"/> You like that?</speak>', {validateAudioFiles: true}, 'audio file https://foo.wav Not correct audio format on HTTPS'));
 promises.push(runTest('Verify soundbank file', '<speak><audio src="soundbank://soundlibrary/ambience/amzn_sfx_crowd_bar_01"/> You like that?</speak>', {platform: 'amazon', validateAudioFiles: true}, 'valid'));
 promises.push(runTest('Invalid soundbank file', '<speak><audio src="soundbank://soundlibrary/ambience/amzn_sfx_crowd_bar_01"/> You like that?</speak>', {validateAudioFiles: true}, 'audio file soundbank://soundlibrary/ambience/amzn_sfx_crowd_bar_01 Not correct audio format on HTTPS'));
 promises.push(runTest('Invalid soundbank category', '<speak><audio src="soundbank://soundlibrary/test/amzn_sfx_crowd_bar_01"/> You like that?</speak>', {platform: 'amazon', validateAudioFiles: true}, 'audio file soundbank://soundlibrary/test/amzn_sfx_crowd_bar_01 Invalid soundbank category test'));
-*/
 promises.push(runTest('Valid Google OOG', '<speak><audio speed="80%" soundLevel="-20.5dB" src="https://actions.google.com/sounds/v1/animals/cat_purr_close.ogg"><desc>a cat purring</desc>PURR (sound didn\'t load)</audio></speak>', {platform: 'google', validateAudioFiles: true}, 'valid'));
 promises.push(runTest('Invalid Google speed', '<speak><audio speed="40%" src="https://actions.google.com/sounds/v1/animals/cat_purr_close.ogg"><desc>a cat purring</desc>PURR (sound didn\'t load)</audio></speak>', {platform: 'google'}, 'audio tag has invalid speed value 40%'));
 promises.push(runTest('Invalid Google sound level', '<speak><audio soundLevel="+50dB" src="https://actions.google.com/sounds/v1/animals/cat_purr_close.ogg"><desc>a cat purring</desc>PURR (sound didn\'t load)</audio></speak>', {platform: 'google'}, 'audio tag has invalid soundLevel value +50dB'));
@@ -133,11 +131,6 @@ promises.push(runTest('Invalid XML', '<tag>What is this?', null, 'Can\'t parse S
 promises.push(runTest('Too many audio files', '<speak><audio src=\"https://www.foo.com/foo.mp3\"/> one <audio src=\"https://www.foo.com/foo.mp3\"/> two <audio src=\"https://www.foo.com/foo.mp3\"/> three <audio src=\"https://www.foo.com/foo.mp3\"/> four <audio src=\"https://www.foo.com/foo.mp3\"/> five <audio src=\"https://www.foo.com/foo.mp3\"/> six </speak>', null, 'Too many audio files'));
 promises.push(runTest('Invalid platform', '<speak>Hello there</speak>', {platform: 'siri'}, 'invalid platform'));
 promises.push(runTest('Invalid ampersand', '<speak>This & that</speak>', null, 'Invalid & character'));
-
-// JSON objects
-promises.push(runTest('simple JSON', {"elements":[{"type":"element","name":"speak","elements":[{"type":"text","text":"Simple test"}]}]}, null, 'valid'));
-promises.push(runTest('break JSON', {"elements":[{"type":"element","name":"speak","elements":[{"type":"text","text":"You lost "},{"type":"element","name":"break","attributes":{"time":"200ms"}},{"type":"text","text":" Getting used to losing?  Take a break and come back tomorrow"}]}]}, null, 'valid'));
-promises.push(runTest('invalid prosody JSON', {"elements":[{"type":"element","name":"speak","elements":[{"type":"element","name":"prosody","attributes":{"volume":"xx-large"},"elements":[{"type":"text","text":"Hello world"}]}]}]}, null, 'prosody tag has invalid volume value xx-large'));
 
 // Final summary
 Promise.all(promises).then(() => {
