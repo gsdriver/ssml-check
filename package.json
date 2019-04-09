@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "music-metadata": "^3.5.3",
-    "ssml-check-core": "^0.1.0",
+    "ssml-check-core": "^0.1.1",
     "xml-js": "^1.6.11"
   },
   "repository": {
