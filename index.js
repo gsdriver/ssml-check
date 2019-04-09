@@ -96,42 +96,109 @@ function validateAudio(src, platform) {
   });
 }
 
+function removeAudioFiles(parent, index, badAudio, element) {
+  let removedTag;
+
+  if ((element.name === 'audio') && (element.attributes.src)
+    && (badAudio.indexOf(element.attributes.src) > -1)) {
+    // Remove this please
+    parent.elements.splice(index, 1);
+    removedTag = true;
+  }
+
+  if (element.elements) {
+    let i;
+    let removed;
+    for (i = 0; i < element.elements.length; i++) {
+      removed = removeAudioFiles(element, i, badAudio, element.elements[i]);
+      if (removed) {
+        // Decrement i since an item was removed
+        i--;
+      }
+    }
+  }
+
+  return removedTag;
+}
+
+function getAudioErrors(ssml, platform) {
+  const promises = [];
+  let errors = [];
+  let result;
+
+  // The input is either a string or a JSON object - convert it if
+  // it is a string into a JSON object
+  try {
+    result = JSON.parse(convert.xml2json(ssml, {compact: false}));
+    const audio = getAudioFiles(result.elements[0]);
+
+    audio.forEach((file) => {
+      promises.push(validateAudio(file, platform));
+    });
+
+    return Promise.all(promises).then((audioErrors) => {
+      audioErrors.forEach((audioError) => {
+        errors = errors.concat(audioError);
+      });
+      return errors;
+    }).then((errors) => {
+      removeAudioFiles(result, 0, errors.map((x) => x.value), result.elements[0]);
+      return {json: result, errors: errors};
+    });
+  } catch (err) {
+    // Just return the errors we already have
+    if (result) {
+      removeAudioFiles(result, 0, errors.map((x) => x.value), result.elements[0]);
+    }
+    return Promise.resolve({json: result, errors: errors});
+  }
+}
+
 module.exports = {
   check: function(ssml, options) {
     const userOptions = options || {};
     userOptions.platform = userOptions.platform || 'all';
+    let errors;
 
     return ssmlCheckCore.check(ssml, options)
     .then((coreErrors) => {
-      let errors = coreErrors || [];
+      errors = coreErrors || [];
 
       // If they asked to validate audio files, do that now
       if (userOptions.validateAudioFiles) {
-        const promises = [];
-
-        // The input is either a string or a JSON object - convert it if
-        // it is a string into a JSON object
-        try {
-          const result = JSON.parse(convert.xml2json(ssml, {compact: false}));
-          const audio = getAudioFiles(result.elements[0]);
-
-          audio.forEach((file) => {
-            promises.push(validateAudio(file, userOptions.platform));
-          });
-
-          return Promise.all(promises).then((audioErrors) => {
-            audioErrors.forEach((audioError) => {
-              errors = errors.concat(audioError);
-            });
-            return (errors.length ? errors : undefined);
-          });
-        } catch (err) {
-          // Just return the errors we already have
-          return (errors.length ? errors : undefined);
-        }
+        return getAudioErrors(ssml, userOptions.platform);
       } else {
-        return coreErrors;
+        return {errors: []};
       }
+    }).then((audioErrors) => {
+      errors = errors.concat(audioErrors.errors);
+      return (errors.length ? errors : undefined);
+    });
+  },
+  verifyAndFix: function(ssml, options) {
+    const userOptions = options || {};
+    userOptions.platform = userOptions.platform || 'all';
+    let retVal;
+
+    return ssmlCheckCore.verifyAndFix(ssml, options)
+    .then((result) => {
+      retVal = result;
+
+      if (userOptions.validateAudioFiles) {
+        const fixedSSML = (result && result.fixedSSML) ? result.fixedSSML : ssml;
+        return getAudioErrors(fixedSSML, userOptions.platform);
+      } else {
+        return {errors: []};
+      }
+    }).then((audioErrors) => {
+      if (audioErrors.errors.length) {
+        // OK, there were additional errors to report
+        retVal.errors = retVal.errors || [];
+        retVal.errors = retVal.errors.concat(audioErrors.errors);
+        retVal.fixedSSML = convert.json2xml(audioErrors.json, {compact: false});
+      }
+
+      return retVal;
     });
   },
 };
