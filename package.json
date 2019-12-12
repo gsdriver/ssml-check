@@ -29,5 +29,6 @@
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/gsdriver/ssml-check/issues"
-  }
+  },
+  "types": "./index.d.ts"
 }
