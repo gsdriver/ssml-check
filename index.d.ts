@@ -5,10 +5,10 @@ export interface ISSMLCheckOptions {
 
 export interface ISSMLCheckError {
   type: string;
-  tag: string;
-  attribute: string;
-  value: string;
-  detail: string;
+  tag?: string;
+  attribute?: string;
+  value?: string;
+  detail?: string;
 }
 
 export interface ISSMLCheckVerifyResponse {
