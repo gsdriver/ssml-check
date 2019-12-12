@@ -3,13 +3,27 @@ export interface ISSMLCheckOptions {
   validateAudioFiles?: boolean;
 }
 
-export interface ISSMLCheckError {
+export interface ISSMLCheckSimpleError {
   type: string;
-  tag?: string;
-  attribute?: string;
-  value?: string;
-  detail?: string;
 }
+
+export interface ISSMLCheckTagError {
+  type: "tag";
+  tag: string;
+  attribute: string;
+  value: string;
+}
+
+export interface ISSMLCheckAudioError {
+  type: "audio";
+  value: string;
+  detail: string;
+}
+
+export type ISSMLCheckError =
+  | ISSMLCheckSimpleError
+  | ISSMLCheckAudioError
+  | ISSMLCheckTagError;
 
 export interface ISSMLCheckVerifyResponse {
   errors?: ISSMLCheckError[];
