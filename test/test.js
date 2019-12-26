@@ -64,6 +64,13 @@ promises.push(runTest('Simple SSML', '<speak>Simple test</speak>', null, 'valid'
 promises.push(runTest('Whisper effect', '<speak><amazon:effect name="whispered">Simple test <break strength="medium"/> code</amazon:effect></speak>', {platform: 'amazon'}, 'valid'));
 promises.push(runTest('Whisper effect', '<speak><amazon:effect name="whispering">Simple test <break strength="medium"/> code</amazon:effect></speak>', {platform: 'amazon'}, 'amazon:effect tag has invalid name value whispering'));
 
+// Amazon:emotion and amazom:domain
+promises.push(runTest('Valid emotion', '<speak><amazon:emotion name="excited" intensity="medium">Christina wins this round!</amazon:emotion></speak>', {platform: 'amazon', locale: 'en-US'}, 'valid'));
+promises.push(runTest('Valid emotion', '<speak><amazon:emotion name="disappointed" intensity="high">Here I am with a brain the size of a planet and they ask me to pick up a piece of paper.</amazon:emotion></speak>', {platform: 'amazon', locale: 'en-US'}, 'valid'));
+promises.push(runTest('Invalid locale', '<speak><amazon:emotion name="excited" intensity="medium">Christina wins this round!</amazon:emotion></speak>', {platform: 'amazon', locale: 'en-GB'}, 'amazon:emotion tag has invalid attribute none'));
+promises.push(runTest('Valid domain', '<speak><amazon:domain name="news">TA miniature manuscript written by the teenage Charlotte Bronte is returning to her childhood home in West Yorkshire after it was bought by a British museum at auction in Paris. </amazon:domain></speak>', {platform: 'amazon', locale: 'en-AU'}, 'valid'));
+promises.push(runTest('Invalid locale', '<speak><amazon:domain name="music">Sweet Child O’ Mine by Guns N’ Roses became one of their most successful singles, topping the billboard Hot 100 in 1988. Slash’s guitar solo on this song was ranked the 37th greatest solo of all time. Here’s Sweet Child O’ Mine. </amazon:domain></speak>', {platform: 'amazon', locale: 'en-AU'}, 'amazon:domain tag has invalid name value music'));
+
 // Audio tests
 promises.push(runTest('Valid audio', '<speak><audio src="foo.mp3" clipBegin="2.2s" clipEnd="3000ms" repeatCount="3"/> You like that?</speak>', {platform: 'google'}, 'valid'));
 promises.push(runTest('Invalid Amazon audio', '<speak><audio src="foo.mp3" clipBegin="2.2s" clipEnd="3000ms" repeatCount="3"/> You like that?</speak>', {platform: 'amazon'}, 'audio tag has invalid attribute clipBeginaudio tag has invalid attribute clipEndaudio tag has invalid attribute repeatCount'));
@@ -163,6 +170,8 @@ promises.push(runCorrection('One bad one good audio', '<speak><audio src="https:
 promises.push(runCorrection('Invalid soundbank category', '<speak><audio src="soundbank://soundlibrary/test/amzn_sfx_crowd_bar_01"/> You like that?</speak>', {platform: 'amazon', validateAudioFiles: true}, '<speak> You like that?</speak>'));
 promises.push(runCorrection('Valid Google OOG', '<speak><audio speed="80%" soundLevel="-20.5dB" src="https://actions.google.com/sounds/v1/animals/cat_purr_close.ogg"><desc>a cat purring</desc>PURR (sound didn\'t load)</audio></speak>', {platform: 'google', validateAudioFiles: true}, 'valid'));
 promises.push(runCorrection('Readme sample', '<speak><tag><prosody rate="60">Hello world</prosody></tag></speak>', null, '<speak><prosody rate="60%">Hello world</prosody></speak>'));
+promises.push(runCorrection('Invalid locale on amazon:emotion', '<speak><amazon:emotion name="excited" intensity="medium">Christina wins this round!</amazon:emotion></speak>', {platform: 'amazon', locale: 'en-GB'}, '<speak>Christina wins this round!</speak>'));
+promises.push(runCorrection('Invalid attribute on amazon:domain', '<speak><amazon:domain name="excited" intensity="medium">Christina wins this round!</amazon:domain></speak>', {platform: 'amazon', locale: 'en-US'}, '<speak><amazon:domain name="news">Christina wins this round!</amazon:domain></speak>'));
 
 // Final summary
 Promise.all(promises).then(() => {

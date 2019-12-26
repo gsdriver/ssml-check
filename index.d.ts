@@ -1,5 +1,6 @@
 export interface ISSMLCheckOptions {
   platform?: "google" | "amazon" | "all";
+  locale?: string;
   validateAudioFiles?: boolean;
 }
 
