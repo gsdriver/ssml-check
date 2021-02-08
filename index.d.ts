@@ -28,7 +28,7 @@ export type ISSMLCheckError =
 
 export interface ISSMLCheckVerifyResponse {
   errors?: ISSMLCheckError[];
-  ssml?: string;
+  fixedSSML?: string;
 }
 
 export function check(
