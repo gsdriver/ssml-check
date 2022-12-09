@@ -67,7 +67,6 @@ promises.push(runTest('Whisper effect', '<speak><amazon:effect name="whispering"
 // Amazon:emotion and amazom:domain
 promises.push(runTest('Valid emotion', '<speak><amazon:emotion name="excited" intensity="medium">Christina wins this round!</amazon:emotion></speak>', {platform: 'amazon', locale: 'en-US'}, 'valid'));
 promises.push(runTest('Valid emotion', '<speak><amazon:emotion name="disappointed" intensity="high">Here I am with a brain the size of a planet and they ask me to pick up a piece of paper.</amazon:emotion></speak>', {platform: 'amazon', locale: 'en-US'}, 'valid'));
-promises.push(runTest('Invalid locale', '<speak><amazon:emotion name="excited" intensity="medium">Christina wins this round!</amazon:emotion></speak>', {platform: 'amazon', locale: 'en-GB'}, 'amazon:emotion tag has invalid attribute none'));
 promises.push(runTest('Valid domain', '<speak><amazon:domain name="news">TA miniature manuscript written by the teenage Charlotte Bronte is returning to her childhood home in West Yorkshire after it was bought by a British museum at auction in Paris. </amazon:domain></speak>', {platform: 'amazon', locale: 'en-AU'}, 'valid'));
 promises.push(runTest('Invalid locale', '<speak><amazon:domain name="music">Sweet Child O’ Mine by Guns N’ Roses became one of their most successful singles, topping the billboard Hot 100 in 1988. Slash’s guitar solo on this song was ranked the 37th greatest solo of all time. Here’s Sweet Child O’ Mine. </amazon:domain></speak>', {platform: 'amazon', locale: 'en-AU'}, 'amazon:domain tag has invalid name value music'));
 
@@ -88,7 +87,8 @@ promises.push(runTest('Google emphasis', '<speak>I already told you I <emphasis 
 
 // Lang tests
 promises.push(runTest('Valid lang', '<speak><lang xml:lang="fr-FR">J\'adore chanter</lang></speak>', {platform: 'amazon'}, 'valid'));
-promises.push(runTest('Invalid lang', '<speak><lang xml:lang="pt-BR">Blame it on Rior</lang></speak>', {platform: 'amazon'}, 'lang tag has invalid xml:lang value pt-BR'));
+promises.push(runTest('Valid lang Brazil', '<speak><lang xml:lang="pt-BR">Blame it on Rio</lang></speak>', {platform: 'amazon'}, 'valid'));
+promises.push(runTest('Invalid lang', '<speak><lang xml:lang="pt-DE">German Portguese</lang></speak>', {platform: 'amazon'}, 'lang tag has invalid xml:lang value pt-DE'));
 
 // p tests
 promises.push(runTest('Valid p', '<speak><p>This is the first paragraph. There should be a pause after this text is spoken.</p><p>This is the second paragraph.</p></speak>', null, 'valid'));
@@ -145,6 +145,9 @@ promises.push(runTest('Invalid Google speed', '<speak><audio speed="40%" src="ht
 promises.push(runTest('Invalid Google sound level', '<speak><audio soundLevel="+50dB" src="https://actions.google.com/sounds/v1/animals/cat_purr_close.ogg"><desc>a cat purring</desc>PURR (sound didn\'t load)</audio></speak>', {platform: 'google'}, 'audio tag has invalid soundLevel value +50dB'));
 promises.push(runTest('Stray desc', '<speak><desc>Some Text</desc></speak>', {platform: 'google'}, 'desc tag has invalid '));
 
+// Unsupported tags
+promises.push(runTest('Prosody unsupported', '<speak><prosody rate="slow">Hello world</prosody></speak>', {unsupportedTags: ['prosody']}, 'prosody tag has invalid '));
+
 // Multiple errors
 promises.push(runTest('Bad break and invalid prosody rate', '<speak>You lost <break tim="200ms"/> Getting used to losing?  <prosody rate="xx-large">Take a break and come back tomorrow</prosody></speak>', null, 'break tag has invalid attribute timprosody tag has invalid rate value xx-large'));
 
@@ -170,8 +173,6 @@ promises.push(runCorrection('One bad one good audio', '<speak><audio src="https:
 promises.push(runCorrection('Invalid soundbank category', '<speak><audio src="soundbank://soundlibrary/test/amzn_sfx_crowd_bar_01"/> You like that?</speak>', {platform: 'amazon', validateAudioFiles: true}, '<speak> You like that?</speak>'));
 promises.push(runCorrection('Valid Google OOG', '<speak><audio speed="80%" soundLevel="-20.5dB" src="https://actions.google.com/sounds/v1/animals/cat_purr_close.ogg"><desc>a cat purring</desc>PURR (sound didn\'t load)</audio></speak>', {platform: 'google', validateAudioFiles: true}, 'valid'));
 promises.push(runCorrection('Readme sample', '<speak><tag><prosody rate="60">Hello world</prosody></tag></speak>', null, '<speak><prosody rate="60%">Hello world</prosody></speak>'));
-promises.push(runCorrection('Invalid locale on amazon:emotion', '<speak><amazon:emotion name="excited" intensity="medium">Christina wins this round!</amazon:emotion></speak>', {platform: 'amazon', locale: 'en-GB'}, '<speak>Christina wins this round!</speak>'));
-promises.push(runCorrection('Invalid attribute on amazon:domain', '<speak><amazon:domain name="excited" intensity="medium">Christina wins this round!</amazon:domain></speak>', {platform: 'amazon', locale: 'en-US'}, '<speak><amazon:domain name="news">Christina wins this round!</amazon:domain></speak>'));
 
 // Final summary
 Promise.all(promises).then(() => {

@@ -28,6 +28,8 @@ The options structure is composed of the following fields with the following def
                             // locale-specific attributes like amazon:emotion
   validateAudioFiles:false, // Whether to validate audio files against
                             // acceptable formats (bit rate, sample rate, etc)
+  unsupportedTags:undefined, // An array of tags that will be flagged as invalid
+                             // For example, ['prosody']
 }
 ```
 
