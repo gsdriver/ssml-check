@@ -2,6 +2,8 @@ export interface ISSMLCheckOptions {
   platform?: "google" | "amazon" | "all";
   locale?: string;
   validateAudioFiles?: boolean;
+  unsupportedTags?: string[];
+  getPositions?: boolean;
 }
 
 export interface ISSMLCheckSimpleError {
