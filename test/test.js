@@ -74,6 +74,8 @@ promises.push(runTest('Valid emotion', '<speak><amazon:emotion name="excited" in
 promises.push(runTest('Valid emotion', '<speak><amazon:emotion name="disappointed" intensity="high">Here I am with a brain the size of a planet and they ask me to pick up a piece of paper.</amazon:emotion></speak>', {platform: 'amazon', locale: 'en-US'}, 'valid'));
 promises.push(runTest('Valid domain', '<speak><amazon:domain name="news">TA miniature manuscript written by the teenage Charlotte Bronte is returning to her childhood home in West Yorkshire after it was bought by a British museum at auction in Paris. </amazon:domain></speak>', {platform: 'amazon', locale: 'en-AU'}, 'valid'));
 promises.push(runTest('Invalid locale', '<speak><amazon:domain name="music">Sweet Child O’ Mine by Guns N’ Roses became one of their most successful singles, topping the billboard Hot 100 in 1988. Slash’s guitar solo on this song was ranked the 37th greatest solo of all time. Here’s Sweet Child O’ Mine. </amazon:domain></speak>', {platform: 'amazon', locale: 'en-AU'}, 'amazon:domain tag has invalid name value music'));
+promises.push(runTest('No locale domain', '<speak><amazon:domain name="conversational">Hi! Hello World</amazon:domain></speak>', {platform: 'amazon'}, 'valid'));
+promises.push(runTest('No locale breath', '<speak><amazon:breath duration="medium" volume="x-loud">Agents are assisting other callers</amazon:breath></speak>', {platform: 'amazon'}, 'valid'));
 
 // Audio tests
 promises.push(runTest('Valid audio', '<speak><audio src="foo.mp3" clipBegin="2.2s" clipEnd="3000ms" repeatCount="3"/> You like that?</speak>', {platform: 'google'}, 'valid'));
